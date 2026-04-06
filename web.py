@@ -576,7 +576,6 @@ def receipt(order_id):
                            receipt_header=database.get_setting("receipt_header", ""),
                            address=database.get_setting("address", ""),
                            phone=database.get_setting("phone", ""),
-                           kra_pin=database.get_setting("kra_pin", ""),
                            tax_rate=database.get_setting("tax_rate", "16"),
                            user=session["user"])
 
@@ -888,7 +887,7 @@ def split_bill(order_id):
 def settings():
     if request.method == "POST":
         for key in ["cafe_name", "tax_rate", "currency_symbol", "receipt_footer",
-                    "address", "phone", "kra_pin", "receipt_header",
+                    "address", "phone", "receipt_header",
                     "manager_pin", "discount_threshold"]:
             database.set_setting(key, request.form.get(key, "").strip())
         flash("Settings saved successfully.", "success")
@@ -900,7 +899,6 @@ def settings():
                            receipt_footer=database.get_setting("receipt_footer"),
                            address=database.get_setting("address"),
                            phone=database.get_setting("phone"),
-                           kra_pin=database.get_setting("kra_pin"),
                            receipt_header=database.get_setting("receipt_header"),
                            manager_pin=database.get_setting("manager_pin",""),
                            discount_threshold=database.get_setting("discount_threshold","10"),

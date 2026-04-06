@@ -12,7 +12,6 @@
 .rcpt .r-item .r-row.sub{color:#666;font-size:11px}
 .rcpt .r-total{font-size:14px;font-weight:800;border-top:2px solid #111;padding-top:5px;margin-top:5px}
 .rcpt .r-ctr{text-align:center;color:#555}
-.rcpt .kra{text-align:center;border:1px dashed #ccc;padding:6px;border-radius:4px;margin-top:8px;font-size:10px;color:#666}
 @media print{
   .sidebar,.page-title,.page-sub,.print-actions{display:none!important}
   .main{margin-left:0!important;padding:10px!important}
@@ -77,13 +76,6 @@
     {% if order.payment_method == 'cash' and order.amount_tendered %}
     <div class="r-row"><span>Cash:</span><span>{{ currency }} {{ "{:,.2f}".format(order.amount_tendered) }}</span></div>
     <div class="r-row"><span>Change:</span><span>{{ currency }} {{ "{:,.2f}".format(order.change_given) }}</span></div>
-    {% endif %}
-    {% if kra_pin or order.receipt_number %}
-    <div class="kra">
-      <div style="font-weight:700">KRA eTIMS RECEIPT</div>
-      <div>{{ order.receipt_number }}</div>
-      {% if kra_pin %}<div>Taxpayer PIN: {{ kra_pin }}</div>{% endif %}
-    </div>
     {% endif %}
     <hr>
     <div class="r-ctr">{{ receipt_footer }}</div>

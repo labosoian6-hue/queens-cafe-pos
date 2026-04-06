@@ -190,7 +190,7 @@ def initialize_db():
             pass
 
     # Extended settings defaults
-    for k, v in [("address", ""), ("phone", ""), ("kra_pin", ""), ("receipt_header", ""),
+    for k, v in [("address", ""), ("phone", ""), ("receipt_header", ""),
                  ("manager_pin", ""), ("discount_threshold", "10")]:
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?,?)", (k, v))
 
