@@ -148,8 +148,9 @@
 </div>
 
 <div class="main">
-  <div style="margin-bottom:10px">
+  <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px">
     <a href="javascript:history.back()" class="btn btn-ghost btn-sm">← Back</a>
+    <button onclick="toggleFullscreen()" class="btn btn-ghost btn-sm" id="fsBtn">⛶ Full Screen</button>
   </div>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}
@@ -161,6 +162,21 @@
 </div>
 
 <script>
+// Full screen toggle
+function toggleFullscreen(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen();
+    document.getElementById('fsBtn').textContent='✕ Exit Full Screen';
+  } else {
+    document.exitFullscreen();
+    document.getElementById('fsBtn').textContent='⛶ Full Screen';
+  }
+}
+document.addEventListener('fullscreenchange',function(){
+  const btn=document.getElementById('fsBtn');
+  if(btn) btn.textContent=document.fullscreenElement?'✕ Exit Full Screen':'⛶ Full Screen';
+});
+
 // Session auto-lock after 15 minutes of inactivity
 (function(){
   const TIMEOUT = 15 * 60 * 1000;

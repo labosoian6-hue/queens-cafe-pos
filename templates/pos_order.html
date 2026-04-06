@@ -119,6 +119,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;height:1
   {% endif %}
   <div class="hdr-clock" id="clock">--:--</div>
   <a href="javascript:history.back()" class="exit-btn" style="background:#1e3a5f;color:#60a5fa">← Back</a>
+  <button onclick="toggleFullscreen()" class="exit-btn" id="fsBtn">⛶ Full</button>
   <a href="/pos" class="exit-btn">✕ Exit</a>
 </div>
 
@@ -470,6 +471,20 @@ function submitPin(){
 document.getElementById('pinInput').addEventListener('keydown',function(e){if(e.key==='Enter')submitPin();});
 
 fetch('/api/order/'+ORDER_ID).then(r=>r.json()).then(renderOrder);
+
+function toggleFullscreen(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen();
+    document.getElementById('fsBtn').textContent='✕ Exit Full';
+  } else {
+    document.exitFullscreen();
+    document.getElementById('fsBtn').textContent='⛶ Full';
+  }
+}
+document.addEventListener('fullscreenchange',function(){
+  const btn=document.getElementById('fsBtn');
+  if(btn) btn.textContent=document.fullscreenElement?'✕ Exit Full':'⛶ Full';
+});
 
 // Session auto-lock after 15 minutes of inactivity
 (function(){
