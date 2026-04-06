@@ -2,7 +2,7 @@
 {% block content %}
 
 <div class="page-title">📊 Dashboard</div>
-<div class="page-sub">Today's overview — {{ selected_date if selected_date is defined else '' }}</div>
+<div class="page-sub">Today's overview</div>
 
 <!-- Stats -->
 <div class="stats">
@@ -25,6 +25,30 @@
     <div class="icon">🍽️</div>
     <div class="val">{{ top_items|length }}</div>
     <div class="lbl">Items Selling Today</div>
+  </div>
+</div>
+
+<!-- Open orders / table status row -->
+<div class="stats" style="margin-bottom:24px">
+  <div class="stat">
+    <div class="icon">🔓</div>
+    <div class="val" style="color:#fbbf24">{{ open_orders_count }}</div>
+    <div class="lbl">Open Orders Now</div>
+  </div>
+  <div class="stat">
+    <div class="icon">🟢</div>
+    <div class="val" style="color:#4ade80">{{ tables_free }}</div>
+    <div class="lbl">Tables Free</div>
+  </div>
+  <div class="stat">
+    <div class="icon">🔴</div>
+    <div class="val" style="color:#f87171">{{ tables_occupied }}</div>
+    <div class="lbl">Tables Occupied</div>
+  </div>
+  <div class="stat">
+    <div class="icon">🕐</div>
+    <div class="val" style="color:#60a5fa">{{ tables_reserved }}</div>
+    <div class="lbl">Tables Reserved</div>
   </div>
 </div>
 

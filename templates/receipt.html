@@ -56,16 +56,18 @@
     {% for item in order_items %}
     <div class="r-item">
       <div>{{ item.item_name }}</div>
+      {% if item.notes %}<div style="font-size:10px;color:#888;font-style:italic">  ↳ {{ item.notes }}</div>{% endif %}
       <div class="r-row sub"><span>@ {{ currency }} {{ "{:,.2f}".format(item.unit_price) }}</span><span style="display:flex;gap:30px"><span>{{ item.quantity }}</span><span style="min-width:70px;text-align:right">{{ "{:,.2f}".format(item.line_total) }}</span></span></div>
     </div>
     {% endfor %}
     <hr>
     <div class="r-row"><span>SUBTOTAL</span><span>{{ currency }} {{ "{:,.2f}".format(order.subtotal) }}</span></div>
     {% if order.discount_amount > 0 %}
-    <div class="r-row"><span>DISCOUNT ({{ order.discount_type }})</span><span>-{{ currency }} {{ "{:,.2f}".format(order.discount_amount) }}</span></div>
+    <div class="r-row"><span>DISCOUNT ({% if order.discount_type == 'percent' %}{{ order.discount_value|int }}%{% else %}{{ currency }} {{ "{:,.2f}".format(order.discount_value) }}{% endif %})</span><span>-{{ currency }} {{ "{:,.2f}".format(order.discount_amount) }}</span></div>
+    <div class="r-row" style="color:#777"><span>NET TAXABLE</span><span>{{ currency }} {{ "{:,.2f}".format(order.subtotal - order.discount_amount) }}</span></div>
     {% endif %}
     <div class="r-row"><span>VAT {{ tax_rate }}%</span><span>{{ currency }} {{ "{:,.2f}".format(order.tax_amount) }}</span></div>
-    <div class="r-row r-total"><span>TOTAL</span><span>{{ currency }} {{ "{:,.2f}".format(order.total) }}</span></div>
+    <div class="r-row r-total"><span>TOTAL (VAT INCL.)</span><span>{{ currency }} {{ "{:,.2f}".format(order.total) }}</span></div>
     <hr>
     <div class="r-row"><span>Payment:</span><span>{{ (order.payment_method or '-').upper() }}</span></div>
     {% if order.payment_reference %}<div class="r-row"><span>Ref:</span><span>{{ order.payment_reference }}</span></div>{% endif %}

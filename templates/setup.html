@@ -150,7 +150,7 @@
       <tr>
         <td>{{ t.table_number }}</td>
         <td>{{ t.capacity }}</td>
-        <td><span class="badge {{ 'badge-green' if t.status == 'free' else 'badge-yellow' }}">{{ t.status.upper() }}</span></td>
+        <td><span class="badge {{ 'badge-green' if t.status == 'free' else 'badge-red' if t.status == 'reserved' else 'badge-yellow' }}">{{ t.status.upper() }}</span></td>
       </tr>
       {% endfor %}
       </tbody>

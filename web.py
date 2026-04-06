@@ -69,11 +69,22 @@ def dashboard():
     top_items = database.get_top_items(today, limit=5)
     by_cat = database.get_sales_by_category(today)
     recent_orders = database.get_orders_by_date_range(today, today)[:8]
+    # Table status summary for dashboard
+    all_tables = database.get_all_tables()
+    tables_free = sum(1 for t in all_tables if t["status"] == "free")
+    tables_occupied = sum(1 for t in all_tables if t["status"] == "occupied")
+    tables_reserved = sum(1 for t in all_tables if t["status"] == "reserved")
+    # Open orders count
+    open_orders_count = database.get_open_orders_count()
     return render_template("dashboard.html",
                            summary=summary,
                            top_items=top_items,
                            by_cat=by_cat,
                            recent_orders=recent_orders,
+                           open_orders_count=open_orders_count,
+                           tables_free=tables_free,
+                           tables_occupied=tables_occupied,
+                           tables_reserved=tables_reserved,
                            cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"),
                            currency=database.get_setting("currency_symbol", "KSh"),
                            user=session["user"])
@@ -461,7 +472,7 @@ def pos_order(order_id):
     if not data:
         flash("Order not found.", "error")
         return redirect(url_for("pos"))
-    if data["order"]["status"] != "open":
+    if data["order"]["status"] not in ("open", "ready"):
         return redirect(url_for("receipt", order_id=order_id))
     categories = database.get_categories()
     all_items = [i for i in database.get_all_items() if i["is_available"]]
@@ -494,7 +505,7 @@ def pos_pay(order_id):
     if not data:
         flash("Order not found.", "error")
         return redirect(url_for("pos"))
-    if data["order"]["status"] != "open":
+    if data["order"]["status"] not in ("open", "ready"):
         return redirect(url_for("receipt", order_id=order_id))
     if request.method == "POST":
         method = request.form["payment_method"]
@@ -542,13 +553,24 @@ def kitchen():
                            user=session["user"])
 
 
+@app.route("/kitchen/bump/<int:order_id>", methods=["POST"])
+@login_required
+def kitchen_bump(order_id):
+    database.bump_order(order_id)
+    return redirect(url_for("kitchen"))
+
+
 # ── Void from Orders page ──────────────────────────────────────────────────────
 @app.route("/orders/void/<int:order_id>", methods=["POST"])
 @admin_required
 def orders_void(order_id):
     database.void_order(order_id)
     flash("Order voided.", "success")
-    return redirect(url_for("orders"))
+    # Preserve date/status filters in redirect
+    start = request.form.get("start", "")
+    end = request.form.get("end", "")
+    status = request.form.get("status", "")
+    return redirect(url_for("orders", start=start, end=end, status=status))
 
 
 # ── POS JSON API ───────────────────────────────────────────────────────────────
@@ -568,6 +590,11 @@ def api_add_item(order_id):
     item = database.get_item_by_id(item_id)
     if not item:
         return jsonify({"error": "Item not found"}), 404
+    if not item.get("is_available"):
+        return jsonify({"error": "Item is not available"}), 400
+    data = database.get_order_with_items(order_id)
+    if not data or data["order"]["status"] not in ("open", "ready"):
+        return jsonify({"error": "Order is not open"}), 400
     database.add_order_item(order_id, item_id, item["name"], item["price"])
     return jsonify(database.get_order_with_items(order_id))
 
@@ -586,6 +613,14 @@ def api_set_discount(order_id):
     dtype = request.json.get("type", "percent")
     dval = float(request.json.get("value", 0))
     database.set_order_discount(order_id, dtype, dval)
+    return jsonify(database.get_order_with_items(order_id))
+
+
+@app.route("/api/order/<int:order_id>/item-note/<int:oi_id>", methods=["POST"])
+@login_required
+def api_set_item_note(order_id, oi_id):
+    note = request.json.get("note", "").strip()
+    database.set_order_item_note(oi_id, note)
     return jsonify(database.get_order_with_items(order_id))
 
 

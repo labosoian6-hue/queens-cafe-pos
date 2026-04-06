@@ -43,7 +43,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-heig
 <div class="kds-hdr">
   <div>
     <h1>🍳 Kitchen Display &mdash; {{ cafe_name }}</h1>
-    <div class="sub">Auto-refreshes every 30 seconds &nbsp;·&nbsp; {{ orders|length }} active order(s)</div>
+    <div class="sub">Auto-refreshes every 30 seconds &nbsp;·&nbsp; {{ orders|length }} active order(s) &nbsp;·&nbsp; {{ orders|selectattr('order.status','equalto','open')|list|length }} pending</div>
   </div>
   <div class="kds-clock" id="clock">--:--:--</div>
   <a href="/dashboard">← Dashboard</a>
@@ -68,11 +68,23 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-heig
       {% for item in o.items %}
       <div class="i-row">
         <div class="i-qty">{{ item.quantity }}</div>
-        <div class="i-name">{{ item.item_name }}</div>
+        <div>
+          <div class="i-name">{{ item.item_name }}</div>
+          {% if item.notes %}<div style="font-size:11px;color:#fbbf24;font-style:italic">{{ item.notes }}</div>{% endif %}
+        </div>
       </div>
       {% endfor %}
     </div>
-    <div class="c-ftr">👤 {{ o.order.staff_name }}</div>
+    <div class="c-ftr" style="display:flex;justify-content:space-between;align-items:center">
+      <span>👤 {{ o.order.staff_name }}</span>
+      {% if o.order.status == 'open' %}
+      <form method="POST" action="/kitchen/bump/{{ o.order.id }}" style="margin:0">
+        <button type="submit" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">✓ BUMP</button>
+      </form>
+      {% else %}
+      <span style="background:#1e3a5f;color:#60a5fa;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700">✅ READY</span>
+      {% endif %}
+    </div>
   </div>
   {% endfor %}
 </div>

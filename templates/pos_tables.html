@@ -38,6 +38,9 @@
 
 <script>
 function selectTable(tableId, status, orderId) {
+  if (status === 'reserved') {
+    if (!confirm('Table is reserved. Start an order anyway?')) return;
+  }
   if (status === 'occupied' && orderId) {
     window.location.href = '/pos/order/' + orderId;
   } else {

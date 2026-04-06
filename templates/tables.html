@@ -49,10 +49,24 @@
         </td>
         <td>
           <div class="flex">
+            {% if t.status != 'free' %}
             <form method="POST" action="/tables/status/{{ t.id }}">
-              <input type="hidden" name="status" value="{{ 'free' if t.status != 'free' else 'occupied' }}">
-              <button class="btn btn-warn btn-sm" type="submit">{{ 'Set Free' if t.status != 'free' else 'Set Occupied' }}</button>
+              <input type="hidden" name="status" value="free">
+              <button class="btn btn-success btn-sm" type="submit">Set Free</button>
             </form>
+            {% endif %}
+            {% if t.status != 'occupied' %}
+            <form method="POST" action="/tables/status/{{ t.id }}">
+              <input type="hidden" name="status" value="occupied">
+              <button class="btn btn-warn btn-sm" type="submit">Set Occupied</button>
+            </form>
+            {% endif %}
+            {% if t.status != 'reserved' %}
+            <form method="POST" action="/tables/status/{{ t.id }}">
+              <input type="hidden" name="status" value="reserved">
+              <button class="btn btn-ghost btn-sm" type="submit">Reserve</button>
+            </form>
+            {% endif %}
             <form method="POST" action="/tables/delete/{{ t.id }}" onsubmit="return confirm('Delete {{ t.table_number }}?')">
               <button class="btn btn-danger btn-sm" type="submit">Delete</button>
             </form>

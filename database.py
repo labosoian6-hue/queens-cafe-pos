@@ -369,7 +369,7 @@ def create_order(staff_id, table_id=None):
 def get_open_order_for_table(table_id):
     conn = get_connection()
     row = conn.execute(
-        "SELECT * FROM orders WHERE table_id=? AND status='open' ORDER BY created_at DESC LIMIT 1",
+        "SELECT * FROM orders WHERE table_id=? AND status IN ('open','ready') ORDER BY created_at DESC LIMIT 1",
         (table_id,)
     ).fetchone()
     conn.close()
@@ -379,7 +379,7 @@ def get_open_order_for_table(table_id):
 def get_open_takeaway_order(staff_id):
     conn = get_connection()
     row = conn.execute(
-        "SELECT * FROM orders WHERE table_id IS NULL AND staff_id=? AND status='open' ORDER BY created_at DESC LIMIT 1",
+        "SELECT * FROM orders WHERE table_id IS NULL AND staff_id=? AND status IN ('open','ready') ORDER BY created_at DESC LIMIT 1",
         (staff_id,)
     ).fetchone()
     conn.close()
@@ -630,7 +630,7 @@ def get_open_orders_with_items():
         "FROM orders o "
         "JOIN staff s ON s.id=o.staff_id "
         "LEFT JOIN tables t ON t.id=o.table_id "
-        "WHERE o.status='open' ORDER BY o.created_at ASC"
+        "WHERE o.status IN ('open','ready') ORDER BY o.created_at ASC"
     ).fetchall()
     result = []
     for order in orders:
@@ -706,6 +706,30 @@ def get_order_item_count(order_id):
     ).fetchone()
     conn.close()
     return int(row["cnt"] or 0)
+
+
+def get_open_orders_count():
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT COUNT(*) as cnt FROM orders WHERE status='open'"
+    ).fetchone()
+    conn.close()
+    return int(row["cnt"] or 0)
+
+
+def set_order_item_note(order_item_id, note):
+    conn = get_connection()
+    conn.execute("UPDATE order_items SET notes=? WHERE id=?", (note, order_item_id))
+    conn.commit()
+    conn.close()
+
+
+def bump_order(order_id):
+    """Mark an open order as 'ready' (bumped from kitchen display)."""
+    conn = get_connection()
+    conn.execute("UPDATE orders SET status='ready' WHERE id=? AND status='open'", (order_id,))
+    conn.commit()
+    conn.close()
 
 
 if __name__ == "__main__":

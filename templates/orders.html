@@ -59,6 +59,9 @@
           <a href="/receipt/{{ o.id }}" class="btn btn-ghost btn-sm">View</a>
           {% if o.status != 'voided' and user.role == 'admin' %}
           <form method="POST" action="/orders/void/{{ o.id }}" onsubmit="return confirm('Void order {{ o.receipt_number }}?')">
+            <input type="hidden" name="start" value="{{ start }}">
+            <input type="hidden" name="end" value="{{ end }}">
+            <input type="hidden" name="status" value="{{ status_filter }}">
             <button class="btn btn-danger btn-sm" type="submit">Void</button>
           </form>
           {% endif %}
