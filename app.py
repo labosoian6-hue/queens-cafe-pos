@@ -1,10 +1,21 @@
 """
 app.py - Entry point for CAFE POS System
+Compatible: Windows 10 (Build 14393+), 2 GB RAM, touch screen
 """
 import tkinter as tk
 import sys, os
 
 sys.path.insert(0, os.path.dirname(__file__))
+
+# Enable DPI awareness so UI is sharp on all screens (Windows 8.1+)
+try:
+    import ctypes
+    ctypes.windll.shcore.SetProcessDpiAwareness(1)
+except Exception:
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
 
 import database
 import pos as pos_module

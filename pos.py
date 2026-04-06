@@ -27,23 +27,26 @@ FONTSANS= "Segoe UI"
 def _style():
     s = ttk.Style()
     s.theme_use("clam")
+    # Larger row height for touch targets
     s.configure("S.Treeview", background=BG3, foreground=TEXT,
-                fieldbackground=BG3, rowheight=28, font=(FONTSANS, 10))
+                fieldbackground=BG3, rowheight=36, font=(FONTSANS, 11))
     s.configure("S.Treeview.Heading", background=BG2, foreground=ACCENT,
-                font=(FONTSANS, 10, "bold"), relief="flat")
+                font=(FONTSANS, 11, "bold"), relief="flat")
     s.map("S.Treeview", background=[("selected", "#3d4f6b")])
     s.configure("TNotebook", background=BG2, borderwidth=0)
     s.configure("TNotebook.Tab", background=BG3, foreground=SUBTEXT,
-                font=(FONTSANS, 10, "bold"), padding=[12, 6])
+                font=(FONTSANS, 11, "bold"), padding=[14, 8])
     s.map("TNotebook.Tab", background=[("selected", ACCENT)],
           foreground=[("selected", TEXT)])
-    s.configure("TScrollbar", background=BG3, troughcolor=BG2, arrowcolor=TEXT)
+    s.configure("TScrollbar", background=BG3, troughcolor=BG2,
+                arrowcolor=TEXT, width=20)  # wider scrollbar for touch
 
 
 def btn(parent, text, cmd, color=ACCENT, fg=TEXT, size=10, **kw):
+    # pady=10 gives ~44px touch target height (Apple/Google HIG minimum)
     b = tk.Button(parent, text=text, command=cmd,
                   bg=color, fg=fg, relief="flat", cursor="hand2",
-                  font=(FONTSANS, size, "bold"), padx=8, pady=5,
+                  font=(FONTSANS, size, "bold"), padx=10, pady=10,
                   activebackground=color, activeforeground=fg, **kw)
     return b
 
@@ -55,9 +58,10 @@ def lbl(parent, text, size=10, bold=False, color=TEXT, **kw):
 
 
 def ent(parent, width=20, **kw):
+    # Larger font and padding for touch-friendly input
     return tk.Entry(parent, width=width, bg=BG3, fg=TEXT,
                     insertbackground=ACCENT, relief="flat",
-                    font=(FONTSANS, 11), bd=3, **kw)
+                    font=(FONTSANS, 13), bd=4, **kw)
 
 
 def sep(parent):

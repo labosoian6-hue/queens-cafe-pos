@@ -1,0 +1,12 @@
+# Queens Cafe POS — Python 3.11 compatible dependencies
+# Target: Windows 10 Pro (Build 14393+), 2GB RAM
+# Install: pip install -r requirements.txt
+
+Flask==2.3.3
+Werkzeug==2.3.7
+Jinja2==3.1.2
+itsdangerous==2.1.2
+click==8.1.7
+
+# Optional: USB thermal printing (run: pip install pywin32)
+# pywin32==306

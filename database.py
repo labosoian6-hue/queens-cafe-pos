@@ -18,6 +18,11 @@ def get_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # Low-RAM optimisations for 2 GB machines
+    conn.execute("PRAGMA cache_size = -4000")   # 4 MB max SQLite cache
+    conn.execute("PRAGMA temp_store = MEMORY")
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA journal_mode = WAL")
     return conn
 
 
