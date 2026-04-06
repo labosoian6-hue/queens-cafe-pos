@@ -52,6 +52,20 @@
       </div>
     </div>
 
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">🔐 Security & Discount Control</div>
+      <div class="form-group">
+        <label>Manager PIN (4 digits)</label>
+        <input class="form-control" name="manager_pin" value="{{ manager_pin }}" type="text" maxlength="4" placeholder="e.g. 1234">
+        <small style="color:#64748b;font-size:11px">Required for discounts above the threshold and manager actions</small>
+      </div>
+      <div class="form-group">
+        <label>Discount Threshold (%) — No PIN required below this</label>
+        <input class="form-control" name="discount_threshold" value="{{ discount_threshold }}" type="number" min="0" max="100" step="1">
+        <small style="color:#64748b;font-size:11px">Cashiers can apply discounts up to this % without manager PIN. Default: 10%</small>
+      </div>
+    </div>
+
     <button class="btn btn-success" type="submit">✓ Save All Settings</button>
   </form>
 </div>

@@ -152,9 +152,29 @@ def initialize_db():
             item
         )
 
+    # Modifiers tables
+    c.executescript("""
+    CREATE TABLE IF NOT EXISTS modifiers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        menu_item_id INTEGER NOT NULL REFERENCES menu_items(id),
+        name TEXT NOT NULL,
+        price_delta REAL DEFAULT 0,
+        is_available INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS order_item_modifiers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_item_id INTEGER NOT NULL REFERENCES order_items(id),
+        modifier_id INTEGER REFERENCES modifiers(id),
+        modifier_name TEXT NOT NULL,
+        price_delta REAL DEFAULT 0
+    );
+    """)
+
     # Migrations – safe to re-run
     for migration in [
-        "ALTER TABLE order_items ADD COLUMN notes TEXT DEFAULT ''"
+        "ALTER TABLE order_items ADD COLUMN notes TEXT DEFAULT ''",
+        "ALTER TABLE order_items ADD COLUMN is_split_voided INTEGER DEFAULT 0"
     ]:
         try:
             c.execute(migration)
@@ -162,7 +182,8 @@ def initialize_db():
             pass
 
     # Extended settings defaults
-    for k, v in [("address", ""), ("phone", ""), ("kra_pin", ""), ("receipt_header", "")]:
+    for k, v in [("address", ""), ("phone", ""), ("kra_pin", ""), ("receipt_header", ""),
+                 ("manager_pin", ""), ("discount_threshold", "10")]:
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?,?)", (k, v))
 
     conn.commit()
@@ -730,6 +751,154 @@ def bump_order(order_id):
     conn.execute("UPDATE orders SET status='ready' WHERE id=? AND status='open'", (order_id,))
     conn.commit()
     conn.close()
+
+
+# ── Table Transfer ─────────────────────────────────────────────────────────────
+
+def transfer_order_table(order_id, new_table_id):
+    conn = get_connection()
+    order = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not order:
+        conn.close()
+        raise ValueError("Order not found")
+    old_table_id = order["table_id"]
+    # Free old table if there was one
+    if old_table_id:
+        conn.execute("UPDATE tables SET status='free' WHERE id=?", (old_table_id,))
+    # Set new table to occupied
+    conn.execute("UPDATE tables SET status='occupied' WHERE id=?", (new_table_id,))
+    conn.execute("UPDATE orders SET table_id=? WHERE id=?", (new_table_id, order_id))
+    conn.commit()
+    conn.close()
+
+
+# ── Modifiers DAO ──────────────────────────────────────────────────────────────
+
+def get_all_modifiers():
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT m.*, mi.name as item_name FROM modifiers m "
+        "JOIN menu_items mi ON mi.id=m.menu_item_id ORDER BY mi.name, m.name"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_modifiers_for_item(item_id):
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT * FROM modifiers WHERE menu_item_id=? AND is_available=1 ORDER BY name",
+        (item_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def create_modifier(menu_item_id, name, price_delta=0):
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO modifiers (menu_item_id, name, price_delta) VALUES (?,?,?)",
+        (menu_item_id, name, price_delta)
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_modifier(modifier_id):
+    conn = get_connection()
+    conn.execute("DELETE FROM modifiers WHERE id=?", (modifier_id,))
+    conn.commit()
+    conn.close()
+
+
+def toggle_modifier(modifier_id):
+    conn = get_connection()
+    conn.execute("UPDATE modifiers SET is_available = 1 - is_available WHERE id=?", (modifier_id,))
+    conn.commit()
+    conn.close()
+
+
+def add_order_item_raw(order_id, menu_item_id, item_name, unit_price, quantity=1):
+    """Add an order item without auto-merging (for modifier-specific items). Returns new oi id."""
+    conn = get_connection()
+    c = conn.execute(
+        "INSERT INTO order_items (order_id, menu_item_id, item_name, unit_price, quantity, line_total) VALUES (?,?,?,?,?,?)",
+        (order_id, menu_item_id, item_name, unit_price, quantity, quantity * unit_price)
+    )
+    oi_id = c.lastrowid
+    _recalculate_order(conn, order_id)
+    conn.commit()
+    conn.close()
+    return oi_id
+
+
+def add_order_item_modifiers(order_item_id, modifiers):
+    conn = get_connection()
+    for m in modifiers:
+        conn.execute(
+            "INSERT INTO order_item_modifiers (order_item_id, modifier_id, modifier_name, price_delta) VALUES (?,?,?,?)",
+            (order_item_id, m["id"], m["name"], m["price_delta"])
+        )
+    conn.commit()
+    conn.close()
+
+
+# ── Split Bill ─────────────────────────────────────────────────────────────────
+
+def split_order(order_id, item_ids, staff_id):
+    """
+    Create a new order with the selected item_ids moved from the original order.
+    Returns the new order id.
+    """
+    conn = get_connection()
+    original = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not original:
+        conn.close()
+        raise ValueError("Original order not found")
+
+    # Generate receipt number for new order
+    receipt_num = generate_receipt_number(conn)
+
+    # New order has no table (it's being split off for separate payment)
+    c = conn.execute(
+        "INSERT INTO orders (staff_id, table_id, receipt_number, discount_type, discount_value) VALUES (?,?,?,?,?)",
+        (staff_id, None, receipt_num, "percent", 0)
+    )
+    new_order_id = c.lastrowid
+
+    # Move selected items to new order
+    for oi_id in item_ids:
+        oi = conn.execute("SELECT * FROM order_items WHERE id=? AND order_id=?", (oi_id, order_id)).fetchone()
+        if oi:
+            # Insert into new order
+            conn.execute(
+                "INSERT INTO order_items (order_id, menu_item_id, item_name, unit_price, quantity, line_total, notes) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (new_order_id, oi["menu_item_id"], oi["item_name"], oi["unit_price"],
+                 oi["quantity"], oi["line_total"], oi.get("notes",""))
+            )
+            # Remove from original order
+            conn.execute("DELETE FROM order_items WHERE id=?", (oi_id,))
+
+    _recalculate_order(conn, order_id)
+    _recalculate_order(conn, new_order_id)
+    conn.commit()
+    conn.close()
+    return new_order_id
+
+
+# ── Z-Report extras ────────────────────────────────────────────────────────────
+
+def get_voided_orders_today(date_str):
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT o.*, s.full_name as cashier_name, t.table_number "
+        "FROM orders o JOIN staff s ON s.id=o.staff_id LEFT JOIN tables t ON t.id=o.table_id "
+        "WHERE DATE(o.created_at)=? AND o.status='voided' ORDER BY o.created_at DESC",
+        (date_str,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 if __name__ == "__main__":

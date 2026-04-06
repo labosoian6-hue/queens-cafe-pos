@@ -117,8 +117,62 @@ function updateElapsed(){
 }
 setInterval(updateElapsed,15000);updateElapsed();
 
+// Session auto-lock after 15 minutes of inactivity
+(function(){
+  const TIMEOUT = 15 * 60 * 1000;
+  let lockTimer;
+  function resetLockTimer(){
+    clearTimeout(lockTimer);
+    lockTimer = setTimeout(function(){
+      window.location.href = '/?msg=Session+locked+due+to+inactivity';
+    }, TIMEOUT);
+  }
+  ['mousemove','keydown','click','touchstart'].forEach(function(ev){
+    document.addEventListener(ev, resetLockTimer, true);
+  });
+  resetLockTimer();
+})();
+
+// KDS Audible Alert on New Orders
+const KNOWN_ORDER_IDS = new Set([{% for o in orders %}{{ o.order.id }},{% endfor %}]);
+
+function playBeep(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.5, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.6);
+  } catch(e){}
+}
+
 let cd=30;
-setInterval(()=>{cd--;const e=document.getElementById('countdown');if(e)e.textContent=cd;if(cd<=0)location.reload();},1000);
+setInterval(()=>{
+  cd--;
+  const e=document.getElementById('countdown');
+  if(e) e.textContent=cd;
+  if(cd<=0){
+    // Before reload, check for new orders
+    fetch('/api/kitchen/orders')
+      .then(r=>r.json())
+      .then(data=>{
+        const newIds = data.order_ids || [];
+        let hasNew = false;
+        for(const id of newIds){
+          if(!KNOWN_ORDER_IDS.has(id)){hasNew=true;break;}
+        }
+        if(hasNew) playBeep();
+        setTimeout(()=>location.reload(), hasNew ? 700 : 0);
+      })
+      .catch(()=>location.reload());
+  }
+},1000);
 </script>
 </body>
 </html>

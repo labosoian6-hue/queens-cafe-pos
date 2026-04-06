@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">🧩 Item Modifiers</div>
+<div class="page-sub">Add options like "Extra Cheese", "No Onions", etc. to menu items</div>
+
+<div class="grid-2">
+  <!-- Add Modifier Form -->
+  <div class="card">
+    <div class="card-title">➕ Add New Modifier</div>
+    <form method="POST" action="/menu/modifiers/add">
+      <div class="form-group">
+        <label>Menu Item</label>
+        <select class="form-control" name="menu_item_id" required>
+          <option value="">-- Select Item --</option>
+          {% for item in items %}
+          <option value="{{ item.id }}">{{ item.name }} ({{ item.category_name }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Modifier Name</label>
+        <input class="form-control" name="name" placeholder="e.g. Extra Cheese, No Onions, Large Size" required>
+      </div>
+      <div class="form-group">
+        <label>Price Adjustment ({{ currency if currency is defined else 'KSh' }})</label>
+        <input class="form-control" name="price_delta" type="number" step="0.01" value="0" placeholder="0 = free, positive = extra charge, negative = discount">
+        <small style="color:#64748b;font-size:11px">Use 0 for no charge, positive for extra cost (e.g. 50), negative for reduction (e.g. -20)</small>
+      </div>
+      <button class="btn btn-primary" type="submit">Add Modifier</button>
+    </form>
+  </div>
+
+  <!-- Modifiers List -->
+  <div class="card">
+    <div class="card-title">📋 All Modifiers ({{ modifiers|length }})</div>
+    {% if modifiers %}
+    <table class="tbl">
+      <thead><tr><th>Item</th><th>Modifier</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for m in modifiers %}
+      <tr>
+        <td style="font-size:12px;color:#94a3b8">{{ m.item_name }}</td>
+        <td style="font-weight:600">{{ m.name }}</td>
+        <td style="color:{{ '#f87171' if m.price_delta < 0 else ('#7c83fd' if m.price_delta > 0 else '#64748b') }}">
+          {{ '+' if m.price_delta > 0 else '' }}{{ "{:,.0f}".format(m.price_delta) }}
+        </td>
+        <td>
+          {% if m.is_available %}
+          <span class="badge badge-green">Available</span>
+          {% else %}
+          <span class="badge badge-red">Unavailable</span>
+          {% endif %}
+        </td>
+        <td style="display:flex;gap:6px">
+          <form method="POST" action="/menu/modifiers/toggle/{{ m.id }}" style="margin:0">
+            <button class="btn btn-ghost btn-sm" type="submit">{{ '⏸' if m.is_available else '▶' }}</button>
+          </form>
+          <form method="POST" action="/menu/modifiers/delete/{{ m.id }}" style="margin:0" onsubmit="return confirm('Delete this modifier?')">
+            <button class="btn btn-danger btn-sm" type="submit">🗑</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#64748b;font-size:13px">No modifiers yet. Add your first modifier using the form.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-top:20px">
+  <div class="card-title">ℹ How Modifiers Work</div>
+  <p style="font-size:13px;color:#94a3b8;line-height:1.7">
+    When a cashier taps a menu item that has modifiers, a popup will appear listing all available options (e.g. "Extra Cheese +50", "No Onions").
+    The cashier can select one or more modifiers. The selected modifiers' names and price adjustments are reflected in the order item name and price.
+    Items without modifiers are added directly to the order as before.
+  </p>
+</div>
+
+{% endblock %}

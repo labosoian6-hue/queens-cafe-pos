@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+@media print {
+  .sidebar, .no-print { display: none !important; }
+  .main { margin-left: 0 !important; padding: 10px !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .card { background: #fff !important; border: 1px solid #ccc !important; color: #000 !important; }
+  .card-title, .page-title, .page-sub { color: #000 !important; }
+  .tbl th { background: #eee !important; color: #000 !important; }
+  .tbl td { color: #000 !important; }
+  .badge { color: #000 !important; background: #eee !important; }
+}
+</style>
+
+<div class="flex-between no-print" style="margin-bottom:20px">
+  <div>
+    <div class="page-title">📋 Z-Report — End of Day</div>
+    <div class="page-sub">Full daily summary for {{ today }} &nbsp;·&nbsp; {{ cafe_name }}</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-primary" onclick="window.print()">🖨 Print Report</button>
+    <a href="/reports" class="btn btn-ghost">← Reports</a>
+  </div>
+</div>
+
+<div style="text-align:center;margin-bottom:20px;display:none" id="printHeader">
+  <h2 style="font-size:20px;font-weight:700">{{ cafe_name }}</h2>
+  <p style="font-size:13px">Z-Report — End of Day Summary</p>
+  <p style="font-size:12px">Date: {{ today }}</p>
+  <hr style="margin:10px 0">
+</div>
+
+<!-- Summary Stats -->
+<div class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">
+  <div class="stat">
+    <div class="icon">🧾</div>
+    <div class="val">{{ summary.summary.orders or 0 }}</div>
+    <div class="lbl">Total Orders</div>
+  </div>
+  <div class="stat">
+    <div class="icon">💰</div>
+    <div class="val">{{ currency }} {{ "{:,.0f}".format(summary.summary.revenue or 0) }}</div>
+    <div class="lbl">Total Revenue</div>
+  </div>
+  <div class="stat">
+    <div class="icon">📊</div>
+    <div class="val">{{ currency }} {{ "{:,.0f}".format(summary.summary.avg_order or 0) }}</div>
+    <div class="lbl">Average Order</div>
+  </div>
+  <div class="stat">
+    <div class="icon">🏛</div>
+    <div class="val">{{ currency }} {{ "{:,.2f}".format(vat_collected) }}</div>
+    <div class="lbl">VAT Collected</div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-bottom:20px">
+  <!-- By Payment Method -->
+  <div class="card">
+    <div class="card-title">💳 Revenue by Payment Method</div>
+    {% if summary.by_method %}
+    <table class="tbl">
+      <thead><tr><th>Method</th><th>Orders</th><th>Total</th></tr></thead>
+      <tbody>
+      {% for m in summary.by_method %}
+      <tr>
+        <td>{% if m.payment_method=='cash' %}💵{% elif m.payment_method=='mpesa' %}📱{% else %}💳{% endif %} {{ m.payment_method.upper() }}</td>
+        <td>{{ m.cnt }}</td>
+        <td style="font-weight:600;color:#fbbf24">{{ currency }} {{ "{:,.2f}".format(m.total) }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:#64748b;font-size:13px">No transactions today.</p>{% endif %}
+  </div>
+
+  <!-- By Category -->
+  <div class="card">
+    <div class="card-title">📂 Revenue by Category</div>
+    {% if by_cat %}
+    <table class="tbl">
+      <thead><tr><th>Category</th><th>Items</th><th>Revenue</th></tr></thead>
+      <tbody>
+      {% for c in by_cat %}
+      <tr>
+        <td>{{ c.category }}</td>
+        <td>{{ c.qty }}</td>
+        <td>{{ currency }} {{ "{:,.2f}".format(c.revenue) }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:#64748b;font-size:13px">No sales today.</p>{% endif %}
+  </div>
+
+  <!-- Top 10 Items -->
+  <div class="card">
+    <div class="card-title">🔥 Top 10 Items Today</div>
+    {% if top_items %}
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Item</th><th>Qty</th><th>Revenue</th></tr></thead>
+      <tbody>
+      {% for item in top_items %}
+      <tr>
+        <td style="color:#64748b">{{ loop.index }}</td>
+        <td>{{ item.item_name }}</td>
+        <td><span class="badge badge-blue">{{ item.qty }}</span></td>
+        <td>{{ currency }} {{ "{:,.2f}".format(item.revenue) }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:#64748b;font-size:13px">No items sold today.</p>{% endif %}
+  </div>
+
+  <!-- Voided Orders -->
+  <div class="card">
+    <div class="card-title">🗑 Voided Orders Today ({{ voided_orders|length }})</div>
+    {% if voided_orders %}
+    <table class="tbl">
+      <thead><tr><th>Receipt</th><th>Time</th><th>Table</th><th>Cashier</th><th>Subtotal</th></tr></thead>
+      <tbody>
+      {% for o in voided_orders %}
+      <tr>
+        <td style="font-family:monospace;font-size:11px;color:#f87171">{{ o.receipt_number }}</td>
+        <td style="font-size:11px">{{ o.created_at[11:16] if o.created_at else '—' }}</td>
+        <td>{{ o.table_number or 'T/A' }}</td>
+        <td>{{ o.cashier_name }}</td>
+        <td style="color:#f87171">{{ currency }} {{ "{:,.2f}".format(o.subtotal or 0) }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:#64748b;font-size:13px">No voided orders today.</p>{% endif %}
+  </div>
+</div>
+
+<!-- All Paid Orders -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-title">🧾 All Paid Transactions Today ({{ paid_orders|length }})</div>
+  {% if paid_orders %}
+  <div style="max-height:300px;overflow-y:auto">
+  <table class="tbl">
+    <thead><tr><th>Receipt</th><th>Time</th><th>Table</th><th>Cashier</th><th>Subtotal</th><th>Disc</th><th>Tax</th><th>Total</th><th>Method</th></tr></thead>
+    <tbody>
+    {% for o in paid_orders %}
+    <tr>
+      <td><a href="/receipt/{{ o.id }}" style="font-size:11px;font-family:monospace;color:#7c83fd">{{ o.receipt_number }}</a></td>
+      <td style="font-size:11px">{{ o.paid_at[11:16] if o.paid_at else '—' }}</td>
+      <td>{{ o.table_number or 'T/A' }}</td>
+      <td style="font-size:11px">{{ o.cashier_name }}</td>
+      <td>{{ currency }} {{ "{:,.0f}".format(o.subtotal or 0) }}</td>
+      <td style="color:#f87171">{{ currency }} {{ "{:,.0f}".format(o.discount_amount or 0) }}</td>
+      <td>{{ currency }} {{ "{:,.0f}".format(o.tax_amount or 0) }}</td>
+      <td style="font-weight:700;color:#fbbf24">{{ currency }} {{ "{:,.0f}".format(o.total or 0) }}</td>
+      <td>{% if o.payment_method=='cash' %}💵{% elif o.payment_method=='mpesa' %}📱{% else %}💳{% endif %} {{ o.payment_method.upper() if o.payment_method else '—' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p style="color:#64748b;font-size:13px">No paid orders today.</p>{% endif %}
+</div>
+
+<div class="card" style="margin-bottom:20px">
+  <div class="card-title">📊 Financial Summary</div>
+  <table class="tbl" style="max-width:400px">
+    <tbody>
+    <tr><td style="color:#94a3b8">Gross Sales</td><td style="font-weight:700">{{ currency }} {{ "{:,.2f}".format(summary.summary.revenue or 0) }}</td></tr>
+    <tr><td style="color:#94a3b8">Total Discounts</td><td style="color:#f87171">- {{ currency }} {{ "{:,.2f}".format(paid_orders|sum(attribute='discount_amount') if paid_orders else 0) }}</td></tr>
+    <tr><td style="color:#94a3b8">VAT Collected</td><td style="color:#7c83fd">{{ currency }} {{ "{:,.2f}".format(vat_collected) }}</td></tr>
+    <tr style="border-top:2px solid #334155"><td style="font-weight:700;color:#f1f5f9">Net Revenue</td><td style="font-weight:800;color:#4ade80;font-size:16px">{{ currency }} {{ "{:,.2f}".format(summary.summary.revenue or 0) }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p style="text-align:center;color:#475569;font-size:11px;margin-top:12px">
+  Z-Report generated: {{ today }} &nbsp;·&nbsp; {{ cafe_name }} &nbsp;·&nbsp; Printed by: {{ user.full_name }}
+</p>
+
+{% endblock %}

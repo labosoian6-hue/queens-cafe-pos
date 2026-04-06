@@ -16,6 +16,8 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;height:1
 .hdr-clock{font-size:13px;color:#64748b;margin-left:auto;white-space:nowrap}
 .exit-btn{background:#334155;color:#94a3b8;border-radius:7px;padding:5px 12px;font-size:12px;text-decoration:none;font-weight:600;white-space:nowrap}
 .exit-btn:hover{background:#475569;color:#e2e8f0}
+.transfer-btn{background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap}
+.transfer-btn:hover{background:#1d4ed8;color:#fff}
 
 /* Body */
 .pos-body{flex:1;display:flex;overflow:hidden}
@@ -75,6 +77,30 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;height:1
 .btn-pay{flex:1;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:800;cursor:pointer}
 .btn-pay:hover{background:#15803d}
 .btn-pay:disabled{background:#334155;color:#64748b;cursor:not-allowed}
+.btn-split{background:#1e3a5f;color:#60a5fa;border:none;border-radius:8px;padding:10px 11px;font-size:12px;font-weight:700;cursor:pointer}
+.btn-split:hover{background:#1d4ed8;color:#fff}
+
+/* Modal overlay */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal-box{background:#1e293b;border-radius:14px;border:1px solid #334155;padding:24px;width:360px;max-width:90vw;max-height:80vh;overflow-y:auto}
+.modal-title{font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:16px}
+.modal-actions{display:flex;gap:8px;margin-top:18px}
+.mbtn{flex:1;padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer}
+.mbtn-primary{background:#7c83fd;color:#fff}
+.mbtn-cancel{background:#334155;color:#94a3b8}
+.mbtn-cancel:hover{background:#475569}
+.mbtn-primary:hover{opacity:.85}
+.mod-option{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #334155;cursor:pointer}
+.mod-option:last-child{border-bottom:none}
+.mod-option input[type=checkbox]{width:16px;height:16px;accent-color:#7c83fd}
+.mod-name{font-size:13px;color:#e2e8f0;flex:1}
+.mod-price{font-size:12px;color:#7c83fd;font-weight:600}
+.pin-input{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px 14px;border-radius:8px;font-size:20px;outline:none;text-align:center;letter-spacing:6px;margin-bottom:8px}
+.pin-input:focus{border-color:#7c83fd}
+.pin-err{color:#f87171;font-size:12px;text-align:center;display:none}
+.transfer-select{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;margin-bottom:8px}
+.transfer-select:focus{border-color:#7c83fd}
 
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
@@ -88,6 +114,9 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;height:1
   <div class="info-chip">🪑 <strong>{{ order.table_number or 'Takeaway' }}</strong></div>
   <div class="info-chip" style="font-family:monospace;font-size:10px">{{ order.receipt_number }}</div>
   <div class="info-chip">👤 {{ user.full_name }}</div>
+  {% if order.table_id %}
+  <button class="transfer-btn" onclick="openTransferModal()">⇄ Transfer Table</button>
+  {% endif %}
   <div class="hdr-clock" id="clock">--:--</div>
   <a href="/pos" class="exit-btn">✕ Exit</a>
 </div>
@@ -110,7 +139,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;height:1
            data-cat="{{ item.category_id }}"
            data-name="{{ item.name|lower }}"
            data-id="{{ item.id }}"
-           onclick="addItem({{ item.id }})">
+           onclick="handleItemClick({{ item.id }})">
         <div class="item-qty-badge" id="badge-{{ item.id }}">0</div>
         <div class="item-name">{{ item.name }}</div>
         <div class="item-price">{{ currency }} {{ "{:,.0f}".format(item.price) }}</div>
@@ -146,8 +175,50 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;height:1
           <button class="btn-void" type="submit">🗑</button>
         </form>
         {% endif %}
+        <button class="btn-split" id="splitBtn" disabled onclick="goToSplit()" title="Split Bill">⚡ Split</button>
         <button class="btn-pay" id="payBtn" disabled onclick="goToPay()">PAY →</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Transfer Table Modal -->
+<div class="modal-overlay" id="transferModal">
+  <div class="modal-box">
+    <div class="modal-title">⇄ Transfer Table</div>
+    <p style="font-size:12px;color:#94a3b8;margin-bottom:12px">Select a free table to move this order to:</p>
+    <select class="transfer-select" id="transferTableSelect">
+      <option value="">Loading free tables...</option>
+    </select>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-cancel" onclick="closeTransferModal()">Cancel</button>
+      <button class="mbtn mbtn-primary" onclick="confirmTransfer()">Transfer →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modifier Selection Modal -->
+<div class="modal-overlay" id="modifierModal">
+  <div class="modal-box">
+    <div class="modal-title" id="modModalTitle">Choose Options</div>
+    <div id="modOptions"></div>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-cancel" onclick="closeModModal()">Cancel</button>
+      <button class="mbtn mbtn-primary" onclick="confirmModifiers()">Add to Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manager PIN Modal -->
+<div class="modal-overlay" id="pinModal">
+  <div class="modal-box">
+    <div class="modal-title">🔐 Manager PIN Required</div>
+    <p style="font-size:12px;color:#94a3b8;margin-bottom:12px">Discount exceeds the allowed threshold. Please enter the Manager PIN to continue.</p>
+    <input type="password" class="pin-input" id="pinInput" maxlength="4" placeholder="••••" inputmode="numeric">
+    <div class="pin-err" id="pinErr">Incorrect PIN. Please try again.</div>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-cancel" onclick="cancelPinModal()">Cancel</button>
+      <button class="mbtn mbtn-primary" onclick="submitPin()">Verify PIN</button>
     </div>
   </div>
 </div>
@@ -155,7 +226,12 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;height:1
 <script>
 const ORDER_ID = {{ order.id }};
 const CURRENCY = '{{ currency }}';
+const DISCOUNT_THRESHOLD = {{ discount_threshold|default(10) }};
+const USER_ROLE = '{{ user.role }}';
 let discTimer = null;
+let pendingDiscType = null;
+let pendingDiscVal = null;
+let pendingModItemId = null;
 
 function tick(){const n=new Date();document.getElementById('clock').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')}
 setInterval(tick,1000);tick();
@@ -174,18 +250,46 @@ function filterItems(q){
   document.querySelectorAll('.item-card').forEach(c=>{c.style.display=c.dataset.name.includes(q)?'':'none'});
 }
 
+function handleItemClick(itemId){
+  // Check if this item has modifiers
+  fetch('/api/item/'+itemId+'/modifiers')
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.modifiers && data.modifiers.length > 0){
+        openModModal(itemId, data.modifiers);
+      } else {
+        addItem(itemId);
+      }
+    })
+    .catch(()=>addItem(itemId));
+}
+
 function addItem(itemId){
   fetch('/api/order/'+ORDER_ID+'/add-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:itemId})})
     .then(r=>r.json()).then(renderOrder);
 }
+
 function updateQty(oiId,qty){
   fetch('/api/order/'+ORDER_ID+'/update-item/'+oiId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({qty:qty})})
     .then(r=>r.json()).then(renderOrder);
 }
+
 function applyDiscountDebounced(){clearTimeout(discTimer);discTimer=setTimeout(applyDiscount,600)}
+
 function applyDiscount(){
   const type=document.getElementById('discType').value;
   const value=parseFloat(document.getElementById('discVal').value)||0;
+  // Check threshold for non-admin users
+  if(USER_ROLE !== 'admin' && type === 'percent' && value > DISCOUNT_THRESHOLD){
+    pendingDiscType = type;
+    pendingDiscVal = value;
+    openPinModal();
+    return;
+  }
+  doApplyDiscount(type, value);
+}
+
+function doApplyDiscount(type, value){
   fetch('/api/order/'+ORDER_ID+'/set-discount',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,value})})
     .then(r=>r.json()).then(renderOrder);
 }
@@ -221,7 +325,7 @@ function renderOrder(data){
           <button class="qb" onclick="updateQty(${oi.id},${oi.quantity+1})">+</button>
         </div>
         <div class="lt">${fmt(oi.line_total)}</div>
-        <button class="rm-btn" title="Add note" onclick="promptNote(${oi.id},'${(oi.notes||'').replace(/'/g,\"&apos;\")}')" style="color:#64748b;font-size:13px">📝</button>
+        <button class="rm-btn" title="Add note" onclick="promptNote(${oi.id},'${(oi.notes||'').replace(/'/g,"&apos;")}')" style="color:#64748b;font-size:13px">📝</button>
         <button class="rm-btn" onclick="updateQty(${oi.id},0)">×</button>
       </div>`).join('');
   }
@@ -234,11 +338,14 @@ function renderOrder(data){
   document.getElementById('discVal').value=order.discount_value||0;
 
   const payBtn=document.getElementById('payBtn');
+  const splitBtn=document.getElementById('splitBtn');
   payBtn.disabled=items.length===0;
+  splitBtn.disabled=items.length===0;
   payBtn.textContent=items.length===0?'PAY →':'PAY '+fmt(order.total)+' →';
 }
 
 function goToPay(){window.location.href='/pos/order/'+ORDER_ID+'/pay'}
+function goToSplit(){window.location.href='/pos/order/'+ORDER_ID+'/split'}
 
 function promptNote(oiId, currentNote){
   const note=prompt('Special instructions for this item:',currentNote||'');
@@ -247,7 +354,125 @@ function promptNote(oiId, currentNote){
     .then(r=>r.json()).then(renderOrder);
 }
 
+// ── Transfer Table Modal ──────────────────────────────────────────────────────
+function openTransferModal(){
+  fetch('/api/tables/free')
+    .then(r=>r.json())
+    .then(data=>{
+      const sel = document.getElementById('transferTableSelect');
+      sel.innerHTML = '';
+      if(!data.tables || data.tables.length===0){
+        sel.innerHTML = '<option value="">No free tables available</option>';
+      } else {
+        sel.innerHTML = '<option value="">-- Select a table --</option>' +
+          data.tables.map(t=>`<option value="${t.id}">${t.table_number} (cap: ${t.capacity})</option>`).join('');
+      }
+    });
+  document.getElementById('transferModal').classList.add('show');
+}
+function closeTransferModal(){document.getElementById('transferModal').classList.remove('show')}
+function confirmTransfer(){
+  const tableId = document.getElementById('transferTableSelect').value;
+  if(!tableId){alert('Please select a table.');return;}
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/pos/order/'+ORDER_ID+'/transfer-table';
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'new_table_id';
+  input.value = tableId;
+  form.appendChild(input);
+  document.body.appendChild(form);
+  form.submit();
+}
+
+// ── Modifier Modal ────────────────────────────────────────────────────────────
+let currentModifiers = [];
+function openModModal(itemId, mods){
+  pendingModItemId = itemId;
+  currentModifiers = mods;
+  const itemName = document.querySelector('[data-id="'+itemId+'"] .item-name').textContent;
+  document.getElementById('modModalTitle').textContent = 'Options: '+itemName;
+  document.getElementById('modOptions').innerHTML = mods.map(m=>`
+    <label class="mod-option">
+      <input type="checkbox" value="${m.id}" data-delta="${m.price_delta}">
+      <span class="mod-name">${m.name}</span>
+      <span class="mod-price">${m.price_delta>0?'+'+CURRENCY+' '+m.price_delta.toFixed(0):(m.price_delta<0?CURRENCY+' '+m.price_delta.toFixed(0):'Free')}</span>
+    </label>`).join('');
+  document.getElementById('modifierModal').classList.add('show');
+}
+function closeModModal(){
+  document.getElementById('modifierModal').classList.remove('show');
+  pendingModItemId = null;
+}
+function confirmModifiers(){
+  const checks = document.querySelectorAll('#modOptions input[type=checkbox]:checked');
+  const modIds = Array.from(checks).map(c=>parseInt(c.value));
+  document.getElementById('modifierModal').classList.remove('show');
+  if(modIds.length === 0){
+    addItem(pendingModItemId);
+  } else {
+    fetch('/api/order/'+ORDER_ID+'/add-item-with-modifiers',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({item_id:pendingModItemId, modifier_ids:modIds})
+    }).then(r=>r.json()).then(renderOrder);
+  }
+  pendingModItemId = null;
+}
+
+// ── Manager PIN Modal ─────────────────────────────────────────────────────────
+function openPinModal(){
+  document.getElementById('pinInput').value='';
+  document.getElementById('pinErr').style.display='none';
+  document.getElementById('pinModal').classList.add('show');
+  setTimeout(()=>document.getElementById('pinInput').focus(),100);
+}
+function cancelPinModal(){
+  document.getElementById('pinModal').classList.remove('show');
+  // Reset discount to threshold max
+  document.getElementById('discVal').value = DISCOUNT_THRESHOLD;
+  doApplyDiscount('percent', DISCOUNT_THRESHOLD);
+  pendingDiscType = null;
+  pendingDiscVal = null;
+}
+function submitPin(){
+  const pin = document.getElementById('pinInput').value;
+  fetch('/api/verify-manager-pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:pin})})
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.ok){
+        document.getElementById('pinModal').classList.remove('show');
+        doApplyDiscount(pendingDiscType, pendingDiscVal);
+        pendingDiscType = null;
+        pendingDiscVal = null;
+      } else {
+        document.getElementById('pinErr').style.display='block';
+        document.getElementById('pinInput').value='';
+        document.getElementById('pinInput').focus();
+      }
+    });
+}
+// Allow Enter key in PIN field
+document.getElementById('pinInput').addEventListener('keydown',function(e){if(e.key==='Enter')submitPin();});
+
 fetch('/api/order/'+ORDER_ID).then(r=>r.json()).then(renderOrder);
+
+// Session auto-lock after 15 minutes of inactivity
+(function(){
+  const TIMEOUT = 15 * 60 * 1000;
+  let timer;
+  function resetTimer(){
+    clearTimeout(timer);
+    timer = setTimeout(function(){
+      window.location.href = '/?msg=Session+locked+due+to+inactivity';
+    }, TIMEOUT);
+  }
+  ['mousemove','keydown','click','touchstart'].forEach(function(ev){
+    document.addEventListener(ev, resetTimer, true);
+  });
+  resetTimer();
+})();
 </script>
 </body>
 </html>

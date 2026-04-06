@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Split Bill — {{ order.receipt_number }}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;padding:20px}
+.hdr{background:#1e293b;border-radius:12px;border:1px solid #334155;padding:16px 22px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.hdr-title{font-size:18px;font-weight:700;color:#f1f5f9}
+.hdr-sub{font-size:12px;color:#64748b;margin-top:3px}
+.back-btn{background:#334155;color:#94a3b8;border-radius:8px;padding:8px 16px;font-size:13px;text-decoration:none;font-weight:600}
+.back-btn:hover{background:#475569;color:#e2e8f0;text-decoration:none}
+.layout{display:grid;grid-template-columns:1fr 320px;gap:20px}
+.card{background:#1e293b;border-radius:12px;border:1px solid #334155;padding:20px}
+.card-title{font-size:13px;font-weight:600;color:#94a3b8;letter-spacing:.5px;text-transform:uppercase;margin-bottom:14px}
+.item-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #334155;cursor:pointer;transition:background .15s;border-radius:6px;padding:10px 8px;margin:0 -8px}
+.item-row:hover{background:#334155}
+.item-row:last-child{border-bottom:none}
+.item-row input[type=checkbox]{width:18px;height:18px;accent-color:#7c83fd;flex-shrink:0}
+.item-info{flex:1}
+.item-name{font-size:13px;font-weight:600;color:#e2e8f0}
+.item-sub{font-size:11px;color:#64748b;margin-top:2px}
+.item-total{font-size:13px;font-weight:700;color:#fbbf24}
+.totals-card{position:sticky;top:20px}
+.bill-block{background:#0f172a;border-radius:10px;padding:14px;margin-bottom:14px}
+.bill-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.tot-row{display:flex;justify-content:space-between;font-size:12px;color:#94a3b8;padding:2px 0}
+.tot-row.grand{font-size:15px;font-weight:800;color:#f1f5f9;padding-top:6px;border-top:1px solid #334155;margin-top:4px}
+.btn{display:block;width:100%;padding:12px;border-radius:9px;border:none;font-size:14px;font-weight:700;cursor:pointer;text-align:center;margin-bottom:8px;text-decoration:none}
+.btn-primary{background:#7c83fd;color:#fff}
+.btn-primary:hover{opacity:.85}
+.btn-primary:disabled{background:#334155;color:#64748b;cursor:not-allowed;opacity:1}
+.btn-ghost{background:#334155;color:#94a3b8}
+.btn-ghost:hover{background:#475569}
+.select-all-row{display:flex;gap:8px;margin-bottom:12px}
+.sel-btn{flex:1;padding:7px;border-radius:7px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#334155;color:#94a3b8}
+.sel-btn:hover{background:#475569;color:#e2e8f0}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-title">⚡ Split Bill — {{ order.table_number or 'Takeaway' }}</div>
+    <div class="hdr-sub">{{ order.receipt_number }} &nbsp;·&nbsp; Select items for Bill 1</div>
+  </div>
+  <a href="/pos/order/{{ order.id }}/pay" class="back-btn">← Back to Payment</a>
+</div>
+
+<form method="POST" action="/pos/order/{{ order.id }}/split" id="splitForm">
+<div class="layout">
+  <!-- Items List -->
+  <div class="card">
+    <div class="card-title">Select Items for Bill 1</div>
+    <div class="select-all-row">
+      <button type="button" class="sel-btn" onclick="selectAll()">Select All</button>
+      <button type="button" class="sel-btn" onclick="selectNone()">Clear All</button>
+    </div>
+    {% for item in order_items %}
+    <label class="item-row" onclick="calcTotals()">
+      <input type="checkbox" name="item_ids[]" value="{{ item.id }}" onchange="calcTotals()">
+      <div class="item-info">
+        <div class="item-name">{{ item.item_name }}</div>
+        <div class="item-sub">{{ currency }} {{ "{:,.0f}".format(item.unit_price) }} × {{ item.quantity }}{% if item.notes %} · {{ item.notes }}{% endif %}</div>
+      </div>
+      <div class="item-total">{{ currency }} {{ "{:,.0f}".format(item.line_total) }}</div>
+    </label>
+    {% endfor %}
+  </div>
+
+  <!-- Totals Panel -->
+  <div class="totals-card">
+    <div class="card">
+      <div class="card-title">Bill Summary</div>
+
+      <div class="bill-block">
+        <div class="bill-label">Bill 1 (Selected)</div>
+        <div class="tot-row"><span>Subtotal</span><span id="bill1-sub">{{ currency }} 0</span></div>
+        <div class="tot-row"><span>Tax ({{ tax_rate }}%)</span><span id="bill1-tax">{{ currency }} 0</span></div>
+        <div class="tot-row grand"><span>Total</span><span id="bill1-total" style="color:#4ade80">{{ currency }} 0</span></div>
+      </div>
+
+      <div class="bill-block">
+        <div class="bill-label">Bill 2 (Remaining)</div>
+        <div class="tot-row"><span>Subtotal</span><span id="bill2-sub">{{ currency }} {{ "{:,.0f}".format(order.subtotal) }}</span></div>
+        <div class="tot-row"><span>Tax ({{ tax_rate }}%)</span><span id="bill2-tax">{{ currency }} {{ "{:,.0f}".format(order.tax_amount) }}</span></div>
+        <div class="tot-row grand"><span>Total</span><span id="bill2-total" style="color:#60a5fa">{{ currency }} {{ "{:,.0f}".format(order.total) }}</span></div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="payBill1Btn" disabled>Pay Bill 1 →</button>
+      <a href="/pos/order/{{ order.id }}/pay" class="btn btn-ghost">Pay Full Bill</a>
+    </div>
+  </div>
+</div>
+</form>
+
+<script>
+const CURRENCY = '{{ currency }}';
+const TAX_RATE = {{ tax_rate }} / 100;
+const ORDER_TOTAL = {{ order.total }};
+const ORDER_SUBTOTAL = {{ order.subtotal }};
+const ORDER_TAX = {{ order.tax_amount }};
+
+// Item data
+const ITEMS = [
+  {% for item in order_items %}
+  {id: {{ item.id }}, sub: {{ item.line_total }}, unit: {{ item.unit_price }}, qty: {{ item.quantity }}},
+  {% endfor %}
+];
+
+function fmt(n){return CURRENCY+' '+(n||0).toLocaleString('en-KE',{minimumFractionDigits:0,maximumFractionDigits:2})}
+
+function calcTotals(){
+  const checks = document.querySelectorAll('input[name="item_ids[]"]:checked');
+  const selectedIds = new Set(Array.from(checks).map(c=>parseInt(c.value)));
+
+  let bill1Sub = 0;
+  ITEMS.forEach(item=>{
+    if(selectedIds.has(item.id)) bill1Sub += item.sub;
+  });
+
+  const bill1Tax = bill1Sub * TAX_RATE;
+  const bill1Total = bill1Sub + bill1Tax;
+  const bill2Sub = ORDER_SUBTOTAL - bill1Sub;
+  const bill2Tax = ORDER_TAX - bill1Tax;
+  const bill2Total = ORDER_TOTAL - bill1Total;
+
+  document.getElementById('bill1-sub').textContent = fmt(bill1Sub);
+  document.getElementById('bill1-tax').textContent = fmt(bill1Tax);
+  document.getElementById('bill1-total').textContent = fmt(bill1Total);
+  document.getElementById('bill2-sub').textContent = fmt(Math.max(0, bill2Sub));
+  document.getElementById('bill2-tax').textContent = fmt(Math.max(0, bill2Tax));
+  document.getElementById('bill2-total').textContent = fmt(Math.max(0, bill2Total));
+
+  document.getElementById('payBill1Btn').disabled = selectedIds.size === 0;
+  document.getElementById('payBill1Btn').textContent = selectedIds.size > 0 ? 'Pay Bill 1 — '+fmt(bill1Total)+' →' : 'Pay Bill 1 →';
+}
+
+function selectAll(){
+  document.querySelectorAll('input[name="item_ids[]"]').forEach(c=>c.checked=true);
+  calcTotals();
+}
+function selectNone(){
+  document.querySelectorAll('input[name="item_ids[]"]').forEach(c=>c.checked=false);
+  calcTotals();
+}
+
+calcTotals();
+</script>
+</body>
+</html>

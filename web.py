@@ -201,26 +201,7 @@ def delete_category(cat_id):
     return redirect(url_for("menu"))
 
 
-# ── Settings ───────────────────────────────────────────────────────────────────
-@app.route("/settings", methods=["GET", "POST"])
-@admin_required
-def settings():
-    if request.method == "POST":
-        for key in ["cafe_name", "tax_rate", "currency_symbol", "receipt_footer",
-                    "address", "phone", "kra_pin", "receipt_header"]:
-            database.set_setting(key, request.form.get(key, "").strip())
-        flash("Settings saved successfully.", "success")
-        return redirect(url_for("settings"))
-    return render_template("settings.html",
-                           cafe_name=database.get_setting("cafe_name"),
-                           tax_rate=database.get_setting("tax_rate"),
-                           currency_symbol=database.get_setting("currency_symbol"),
-                           receipt_footer=database.get_setting("receipt_footer"),
-                           address=database.get_setting("address"),
-                           phone=database.get_setting("phone"),
-                           kra_pin=database.get_setting("kra_pin"),
-                           receipt_header=database.get_setting("receipt_header"),
-                           user=session["user"])
+# ── Settings ── (moved below with extended fields)
 
 
 # ── Setup Wizard ───────────────────────────────────────────────────────────────
@@ -484,6 +465,7 @@ def pos_order(order_id):
                            cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"),
                            currency=database.get_setting("currency_symbol", "KSh"),
                            tax_rate=database.get_setting("tax_rate", "16"),
+                           discount_threshold=database.get_setting("discount_threshold", "10"),
                            user=session["user"])
 
 
@@ -622,6 +604,250 @@ def api_set_item_note(order_id, oi_id):
     note = request.json.get("note", "").strip()
     database.set_order_item_note(oi_id, note)
     return jsonify(database.get_order_with_items(order_id))
+
+
+# ── Kitchen JSON API ───────────────────────────────────────────────────────────
+@app.route("/api/kitchen/orders")
+@login_required
+def api_kitchen_orders():
+    orders = database.get_open_orders_with_items()
+    return jsonify({"order_ids": [o["order"]["id"] for o in orders]})
+
+
+# ── Tables Free API ────────────────────────────────────────────────────────────
+@app.route("/api/tables/free")
+@login_required
+def api_tables_free():
+    tables = database.get_all_tables()
+    free = [t for t in tables if t["status"] == "free"]
+    return jsonify({"tables": free})
+
+
+# ── Table Transfer ─────────────────────────────────────────────────────────────
+@app.route("/pos/order/<int:order_id>/transfer-table", methods=["POST"])
+@login_required
+def transfer_table(order_id):
+    new_table_id = request.form.get("new_table_id")
+    if not new_table_id:
+        flash("Please select a table.", "error")
+        return redirect(url_for("pos_order", order_id=order_id))
+    try:
+        database.transfer_order_table(order_id, int(new_table_id))
+        flash("Table transferred successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("pos_order", order_id=order_id))
+
+
+# ── Manager PIN API ────────────────────────────────────────────────────────────
+@app.route("/api/verify-manager-pin", methods=["POST"])
+@login_required
+def api_verify_manager_pin():
+    pin = request.json.get("pin", "")
+    stored = database.get_setting("manager_pin", "")
+    if stored and pin == stored:
+        return jsonify({"ok": True})
+    return jsonify({"ok": False})
+
+
+# ── Reports CSV Export ─────────────────────────────────────────────────────────
+@app.route("/reports/export-csv")
+@login_required
+def reports_export_csv():
+    import csv, io
+    from datetime import date
+    today = date.today().strftime("%Y-%m-%d")
+    start = request.args.get("start", today)
+    end = request.args.get("end", today)
+    orders = database.get_orders_by_date_range(start, end, status="paid")
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Receipt#","Date","Time","Table","Cashier","Subtotal","Discount","Tax","Total","Payment Method","Reference"])
+    for o in orders:
+        paid_at = o.get("paid_at","") or ""
+        date_part = paid_at[:10] if paid_at else ""
+        time_part = paid_at[11:16] if len(paid_at) > 10 else ""
+        writer.writerow([
+            o.get("receipt_number",""),
+            date_part,
+            time_part,
+            o.get("table_number","") or "Takeaway",
+            o.get("cashier_name",""),
+            "{:.2f}".format(o.get("subtotal",0) or 0),
+            "{:.2f}".format(o.get("discount_amount",0) or 0),
+            "{:.2f}".format(o.get("tax_amount",0) or 0),
+            "{:.2f}".format(o.get("total",0) or 0),
+            o.get("payment_method",""),
+            o.get("payment_reference","")
+        ])
+    csv_data = output.getvalue()
+    from flask import Response
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment;filename=transactions_{start}_to_{end}.csv"}
+    )
+
+
+# ── Z-Report / Shift Report ────────────────────────────────────────────────────
+@app.route("/reports/zreport")
+@login_required
+def zreport():
+    from datetime import date
+    today = date.today().strftime("%Y-%m-%d")
+    summary = database.get_daily_summary(today)
+    top_items = database.get_top_items(today, limit=10)
+    by_cat = database.get_sales_by_category(today)
+    all_orders = database.get_orders_by_date_range(today, today)
+    paid_orders = [o for o in all_orders if o["status"] == "paid"]
+    voided_orders = [o for o in all_orders if o["status"] == "voided"]
+    # VAT collected
+    vat_collected = sum(o.get("tax_amount",0) or 0 for o in paid_orders)
+    return render_template("zreport.html",
+                           summary=summary,
+                           top_items=top_items,
+                           by_cat=by_cat,
+                           paid_orders=paid_orders,
+                           voided_orders=voided_orders,
+                           vat_collected=vat_collected,
+                           today=today,
+                           currency=database.get_setting("currency_symbol","KSh"),
+                           cafe_name=database.get_setting("cafe_name","QUEENS CAFE"),
+                           user=session["user"])
+
+
+# ── Modifiers Management ───────────────────────────────────────────────────────
+@app.route("/menu/modifiers")
+@login_required
+def menu_modifiers():
+    items = database.get_all_items()
+    modifiers = database.get_all_modifiers()
+    return render_template("modifiers.html",
+                           items=items,
+                           modifiers=modifiers,
+                           cafe_name=database.get_setting("cafe_name","QUEENS CAFE"),
+                           user=session["user"])
+
+@app.route("/menu/modifiers/add", methods=["POST"])
+@login_required
+def add_modifier():
+    try:
+        database.create_modifier(
+            int(request.form["menu_item_id"]),
+            request.form["name"].strip(),
+            float(request.form.get("price_delta",0) or 0)
+        )
+        flash("Modifier added.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("menu_modifiers"))
+
+@app.route("/menu/modifiers/delete/<int:mod_id>", methods=["POST"])
+@login_required
+def delete_modifier(mod_id):
+    database.delete_modifier(mod_id)
+    flash("Modifier deleted.", "success")
+    return redirect(url_for("menu_modifiers"))
+
+@app.route("/menu/modifiers/toggle/<int:mod_id>", methods=["POST"])
+@login_required
+def toggle_modifier(mod_id):
+    database.toggle_modifier(mod_id)
+    return redirect(url_for("menu_modifiers"))
+
+@app.route("/api/item/<int:item_id>/modifiers")
+@login_required
+def api_item_modifiers(item_id):
+    mods = database.get_modifiers_for_item(item_id)
+    return jsonify({"modifiers": mods})
+
+@app.route("/api/order/<int:order_id>/add-item-with-modifiers", methods=["POST"])
+@login_required
+def api_add_item_with_modifiers(order_id):
+    data = request.json
+    item_id = int(data["item_id"])
+    modifier_ids = data.get("modifier_ids", [])
+    item = database.get_item_by_id(item_id)
+    if not item:
+        return jsonify({"error": "Item not found"}), 404
+    if not item.get("is_available"):
+        return jsonify({"error": "Item not available"}), 400
+    order_data = database.get_order_with_items(order_id)
+    if not order_data or order_data["order"]["status"] not in ("open","ready"):
+        return jsonify({"error": "Order not open"}), 400
+    # Calculate total price with modifiers
+    mods = database.get_modifiers_for_item(item_id)
+    selected_mods = [m for m in mods if m["id"] in modifier_ids]
+    extra = sum(m["price_delta"] for m in selected_mods)
+    unit_price = item["price"] + extra
+    # Add item with modifier suffix in name
+    mod_names = ", ".join(m["name"] for m in selected_mods)
+    display_name = item["name"] + (" [" + mod_names + "]" if mod_names else "")
+    oi_id = database.add_order_item_raw(order_id, item_id, display_name, unit_price)
+    if selected_mods:
+        database.add_order_item_modifiers(oi_id, selected_mods)
+    return jsonify(database.get_order_with_items(order_id))
+
+
+# ── Split Bill ─────────────────────────────────────────────────────────────────
+@app.route("/pos/order/<int:order_id>/split", methods=["GET"])
+@login_required
+def split_bill_page(order_id):
+    data = database.get_order_with_items(order_id)
+    if not data:
+        flash("Order not found.", "error")
+        return redirect(url_for("pos"))
+    if data["order"]["status"] not in ("open","ready"):
+        flash("Order is not open.", "error")
+        return redirect(url_for("pos"))
+    return render_template("split_bill.html",
+                           order=data["order"],
+                           order_items=data["items"],
+                           cafe_name=database.get_setting("cafe_name","QUEENS CAFE"),
+                           currency=database.get_setting("currency_symbol","KSh"),
+                           tax_rate=database.get_setting("tax_rate","16"),
+                           user=session["user"])
+
+@app.route("/pos/order/<int:order_id>/split", methods=["POST"])
+@login_required
+def split_bill(order_id):
+    item_ids = request.form.getlist("item_ids[]")
+    if not item_ids:
+        flash("Please select at least one item for the split.", "error")
+        return redirect(url_for("split_bill_page", order_id=order_id))
+    item_ids = [int(i) for i in item_ids]
+    try:
+        new_order_id = database.split_order(order_id, item_ids, session["user"]["id"])
+        return redirect(url_for("pos_pay", order_id=new_order_id))
+    except Exception as e:
+        flash(str(e), "error")
+        return redirect(url_for("split_bill_page", order_id=order_id))
+
+
+# ── Settings (updated with manager_pin & discount_threshold) ────────────────────
+# Override the settings route to include new fields
+@app.route("/settings", methods=["GET", "POST"])
+@admin_required
+def settings():
+    if request.method == "POST":
+        for key in ["cafe_name", "tax_rate", "currency_symbol", "receipt_footer",
+                    "address", "phone", "kra_pin", "receipt_header",
+                    "manager_pin", "discount_threshold"]:
+            database.set_setting(key, request.form.get(key, "").strip())
+        flash("Settings saved successfully.", "success")
+        return redirect(url_for("settings"))
+    return render_template("settings.html",
+                           cafe_name=database.get_setting("cafe_name"),
+                           tax_rate=database.get_setting("tax_rate"),
+                           currency_symbol=database.get_setting("currency_symbol"),
+                           receipt_footer=database.get_setting("receipt_footer"),
+                           address=database.get_setting("address"),
+                           phone=database.get_setting("phone"),
+                           kra_pin=database.get_setting("kra_pin"),
+                           receipt_header=database.get_setting("receipt_header"),
+                           manager_pin=database.get_setting("manager_pin",""),
+                           discount_threshold=database.get_setting("discount_threshold","10"),
+                           user=session["user"])
 
 
 if __name__ == "__main__":
