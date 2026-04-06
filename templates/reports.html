@@ -1,16 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="page-title">📈 Reports</div>
+<div class="page-title">📈 Reports & Analytics</div>
 <div class="page-sub">Sales and revenue analysis</div>
 
-<form method="GET" style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-  <label style="font-size:12px;color:#94a3b8;font-weight:600">Date:</label>
-  <input class="form-control" type="date" name="date" value="{{ selected_date }}" style="width:180px">
+<form method="GET" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+  <label style="font-size:12px;color:#94a3b8;font-weight:600">From:</label>
+  <input class="form-control" type="date" name="start" value="{{ start }}" style="width:180px">
+  <label style="font-size:12px;color:#94a3b8;font-weight:600">To:</label>
+  <input class="form-control" type="date" name="end" value="{{ end }}" style="width:180px">
   <button class="btn btn-primary" type="submit">Load Report</button>
+  <a href="?start={{ start }}&end={{ end }}" class="btn btn-ghost" style="font-size:12px">Today</a>
 </form>
 
-<!-- Summary cards -->
 <div class="stats">
   <div class="stat">
     <div class="icon">🧾</div>
@@ -29,13 +31,12 @@
   </div>
   <div class="stat">
     <div class="icon">🏆</div>
-    <div class="val">{{ top_items[0].item_name if top_items else '—' }}</div>
-    <div class="lbl">Top Item</div>
+    <div class="val" style="font-size:14px">{{ top_items[0].item_name if top_items else '—' }}</div>
+    <div class="lbl">Top Selling Item</div>
   </div>
 </div>
 
 <div class="grid-2">
-
   <div class="card">
     <div class="card-title">💳 By Payment Method</div>
     {% if summary.by_method %}
@@ -46,12 +47,12 @@
       <tr>
         <td>{% if m.payment_method=='cash' %}💵{% elif m.payment_method=='mpesa' %}📱{% else %}💳{% endif %} {{ m.payment_method.upper() }}</td>
         <td>{{ m.cnt }}</td>
-        <td>{{ currency }} {{ "{:,.2f}".format(m.total) }}</td>
+        <td style="font-weight:600;color:#fbbf24">{{ currency }} {{ "{:,.2f}".format(m.total) }}</td>
       </tr>
       {% endfor %}
       </tbody>
     </table>
-    {% else %}<p style="color:#64748b;font-size:13px">No data for this date.</p>{% endif %}
+    {% else %}<p style="color:#64748b;font-size:13px">No data for this period.</p>{% endif %}
   </div>
 
   <div class="card">
@@ -69,7 +70,7 @@
       {% endfor %}
       </tbody>
     </table>
-    {% else %}<p style="color:#64748b;font-size:13px">No data for this date.</p>{% endif %}
+    {% else %}<p style="color:#64748b;font-size:13px">No data for this period.</p>{% endif %}
   </div>
 
   <div class="card">
@@ -78,37 +79,59 @@
     <table class="tbl">
       <thead><tr><th>#</th><th>Item</th><th>Qty</th><th>Revenue</th></tr></thead>
       <tbody>
-      {% for i in range(top_items|length) %}
+      {% for item in top_items %}
       <tr>
-        <td style="color:#64748b">{{ i+1 }}</td>
-        <td>{{ top_items[i].item_name }}</td>
-        <td><span class="badge badge-blue">{{ top_items[i].qty }}</span></td>
-        <td>{{ currency }} {{ "{:,.2f}".format(top_items[i].revenue) }}</td>
+        <td style="color:#64748b">{{ loop.index }}</td>
+        <td>{{ item.item_name }}</td>
+        <td><span class="badge badge-blue">{{ item.qty }}</span></td>
+        <td>{{ currency }} {{ "{:,.2f}".format(item.revenue) }}</td>
       </tr>
       {% endfor %}
       </tbody>
     </table>
-    {% else %}<p style="color:#64748b;font-size:13px">No sales data for this date.</p>{% endif %}
+    {% else %}<p style="color:#64748b;font-size:13px">No sales for this period.</p>{% endif %}
   </div>
 
   <div class="card">
     <div class="card-title">🧾 Transactions</div>
     {% if orders %}
+    <div style="max-height:260px;overflow-y:auto">
     <table class="tbl">
-      <thead><tr><th>Receipt</th><th>Table</th><th>Total</th><th>Method</th></tr></thead>
+      <thead><tr><th>Receipt</th><th>Time</th><th>Table</th><th>Total</th><th>Method</th></tr></thead>
       <tbody>
       {% for o in orders %}
       <tr>
-        <td style="font-size:11px;font-family:monospace">{{ o.receipt_number }}</td>
-        <td>{{ o.table_number or 'Takeaway' }}</td>
-        <td>{{ currency }} {{ "{:,.2f}".format(o.total) }}</td>
-        <td>{{ o.payment_method.upper() if o.payment_method else '-' }}</td>
+        <td><a href="/receipt/{{ o.id }}" style="font-size:11px;font-family:monospace;color:#7c83fd">{{ o.receipt_number }}</a></td>
+        <td style="font-size:11px">{{ o.paid_at[11:16] if o.paid_at else '—' }}</td>
+        <td>{{ o.table_number or 'T/A' }}</td>
+        <td style="font-weight:600;color:#fbbf24">{{ currency }} {{ "{:,.0f}".format(o.total) }}</td>
+        <td>{{ o.payment_method.upper() if o.payment_method else '—' }}</td>
       </tr>
       {% endfor %}
       </tbody>
     </table>
-    {% else %}<p style="color:#64748b;font-size:13px">No paid orders for this date.</p>{% endif %}
+    </div>
+    {% else %}<p style="color:#64748b;font-size:13px">No paid orders for this period.</p>{% endif %}
   </div>
-
 </div>
+
+{% if breakdown %}
+<div class="card" style="margin-top:20px">
+  <div class="card-title">📅 Daily Breakdown ({{ start }} to {{ end }})</div>
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Orders</th><th>Revenue</th><th>Avg Order</th></tr></thead>
+    <tbody>
+    {% for day in breakdown %}
+    <tr>
+      <td style="font-weight:600">{{ day.day }}</td>
+      <td>{{ day.orders }}</td>
+      <td style="color:#fbbf24;font-weight:600">{{ currency }} {{ "{:,.2f}".format(day.revenue) }}</td>
+      <td>{{ currency }} {{ "{:,.2f}".format(day.revenue / day.orders if day.orders else 0) }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 {% endblock %}

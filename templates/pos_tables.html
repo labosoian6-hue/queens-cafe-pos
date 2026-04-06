@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="flex-between" style="margin-bottom:24px">
+  <div>
+    <div class="page-title">🖥️ POS — Select Table</div>
+    <div class="page-sub">Choose a table to start or continue an order</div>
+  </div>
+  <form method="POST" action="/pos/new-order">
+    <button class="btn btn-primary" type="submit">🥡 New Takeaway Order</button>
+  </form>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px">
+  {% for t in tables %}
+  {% set border_color = '#16a34a' if t.status=='free' else '#d97706' if t.status=='occupied' else '#dc2626' %}
+  <div style="background:#1e293b;border-radius:12px;border:2px solid {{ border_color }};padding:20px 16px;text-align:center;cursor:pointer;transition:all .2s;user-select:none"
+       onclick="selectTable({{ t.id }}, '{{ t.status }}', {{ t.open_order.id if t.open_order else 'null' }})"
+       onmouseenter="this.style.transform='translateY(-2px)'"
+       onmouseleave="this.style.transform=''">
+    <div style="font-size:32px;margin-bottom:8px">🪑</div>
+    <div style="font-size:20px;font-weight:800;color:#f1f5f9;margin-bottom:4px">{{ t.table_number }}</div>
+    <div style="font-size:11px;color:#64748b;margin-bottom:8px">{{ t.capacity }} seats</div>
+    <span class="badge {{ 'badge-green' if t.status=='free' else 'badge-yellow' if t.status=='occupied' else 'badge-red' }}">
+      {{ t.status.upper() }}
+    </span>
+    {% if t.open_order %}
+    <div style="margin-top:10px;font-size:13px;color:#fbbf24;font-weight:700">
+      {{ currency }} {{ "{:,.0f}".format(t.open_order.total) }}
+    </div>
+    <div style="font-size:10px;color:#64748b">tap to continue</div>
+    {% else %}
+    <div style="margin-top:10px;font-size:11px;color:#475569">tap to start order</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+function selectTable(tableId, status, orderId) {
+  if (status === 'occupied' && orderId) {
+    window.location.href = '/pos/order/' + orderId;
+  } else {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/pos/new-order';
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = 'table_id'; inp.value = tableId;
+    form.appendChild(inp);
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+</script>
+{% endblock %}

@@ -152,6 +152,19 @@ def initialize_db():
             item
         )
 
+    # Migrations – safe to re-run
+    for migration in [
+        "ALTER TABLE order_items ADD COLUMN notes TEXT DEFAULT ''"
+    ]:
+        try:
+            c.execute(migration)
+        except Exception:
+            pass
+
+    # Extended settings defaults
+    for k, v in [("address", ""), ("phone", ""), ("kra_pin", ""), ("receipt_header", "")]:
+        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?,?)", (k, v))
+
     conn.commit()
     conn.close()
 
@@ -585,6 +598,114 @@ def set_setting(key, value):
     conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?,?)", (key, value))
     conn.commit()
     conn.close()
+
+
+# ── Extended DAOs ──────────────────────────────────────────────────────────────
+
+def get_item_by_id(item_id):
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM menu_items WHERE id=?", (item_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_staff_by_id(staff_id):
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM staff WHERE id=?", (staff_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def delete_staff(staff_id):
+    conn = get_connection()
+    conn.execute("DELETE FROM staff WHERE id=? AND username != 'admin'", (staff_id,))
+    conn.commit()
+    conn.close()
+
+
+def get_open_orders_with_items():
+    conn = get_connection()
+    orders = conn.execute(
+        "SELECT o.*, s.full_name as staff_name, t.table_number "
+        "FROM orders o "
+        "JOIN staff s ON s.id=o.staff_id "
+        "LEFT JOIN tables t ON t.id=o.table_id "
+        "WHERE o.status='open' ORDER BY o.created_at ASC"
+    ).fetchall()
+    result = []
+    for order in orders:
+        items = conn.execute(
+            "SELECT * FROM order_items WHERE order_id=?", (order["id"],)
+        ).fetchall()
+        result.append({"order": dict(order), "items": [dict(i) for i in items]})
+    conn.close()
+    return result
+
+
+def get_daily_breakdown(start_date, end_date):
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT DATE(paid_at) as day, COUNT(*) as orders, SUM(total) as revenue "
+        "FROM orders WHERE DATE(paid_at) BETWEEN ? AND ? AND status='paid' "
+        "GROUP BY DATE(paid_at) ORDER BY day",
+        (start_date, end_date)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_range_summary(start_date, end_date):
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT COUNT(*) as orders, SUM(total) as revenue, AVG(total) as avg_order "
+        "FROM orders WHERE DATE(paid_at) BETWEEN ? AND ? AND status='paid'",
+        (start_date, end_date)
+    ).fetchone()
+    by_method = conn.execute(
+        "SELECT payment_method, COUNT(*) as cnt, SUM(total) as total "
+        "FROM orders WHERE DATE(paid_at) BETWEEN ? AND ? AND status='paid' "
+        "GROUP BY payment_method",
+        (start_date, end_date)
+    ).fetchall()
+    conn.close()
+    return {"summary": dict(row), "by_method": [dict(r) for r in by_method]}
+
+
+def get_top_items_range(start_date, end_date, limit=10):
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT oi.item_name, SUM(oi.quantity) as qty, SUM(oi.line_total) as revenue "
+        "FROM order_items oi JOIN orders o ON o.id=oi.order_id "
+        "WHERE DATE(o.paid_at) BETWEEN ? AND ? AND o.status='paid' "
+        "GROUP BY oi.item_name ORDER BY qty DESC LIMIT ?",
+        (start_date, end_date, limit)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_sales_by_category_range(start_date, end_date):
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT c.name as category, SUM(oi.line_total) as revenue, SUM(oi.quantity) as qty "
+        "FROM order_items oi JOIN orders o ON o.id=oi.order_id "
+        "JOIN menu_items mi ON mi.id=oi.menu_item_id "
+        "JOIN categories c ON c.id=mi.category_id "
+        "WHERE DATE(o.paid_at) BETWEEN ? AND ? AND o.status='paid' "
+        "GROUP BY c.name ORDER BY revenue DESC",
+        (start_date, end_date)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_order_item_count(order_id):
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT SUM(quantity) as cnt FROM order_items WHERE order_id=?", (order_id,)
+    ).fetchone()
+    conn.close()
+    return int(row["cnt"] or 0)
 
 
 if __name__ == "__main__":

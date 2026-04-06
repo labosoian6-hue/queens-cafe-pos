@@ -195,7 +195,8 @@ def delete_category(cat_id):
 @admin_required
 def settings():
     if request.method == "POST":
-        for key in ["cafe_name", "tax_rate", "currency_symbol", "receipt_footer"]:
+        for key in ["cafe_name", "tax_rate", "currency_symbol", "receipt_footer",
+                    "address", "phone", "kra_pin", "receipt_header"]:
             database.set_setting(key, request.form.get(key, "").strip())
         flash("Settings saved successfully.", "success")
         return redirect(url_for("settings"))
@@ -204,6 +205,10 @@ def settings():
                            tax_rate=database.get_setting("tax_rate"),
                            currency_symbol=database.get_setting("currency_symbol"),
                            receipt_footer=database.get_setting("receipt_footer"),
+                           address=database.get_setting("address"),
+                           phone=database.get_setting("phone"),
+                           kra_pin=database.get_setting("kra_pin"),
+                           receipt_header=database.get_setting("receipt_header"),
                            user=session["user"])
 
 
@@ -313,23 +318,51 @@ def toggle_staff(staff_id):
     database.toggle_staff_active(staff_id)
     return redirect(url_for("staff"))
 
+@app.route("/staff/edit/<int:staff_id>", methods=["POST"])
+@admin_required
+def edit_staff(staff_id):
+    password = request.form.get("password", "").strip()
+    database.update_staff(
+        staff_id,
+        request.form["full_name"].strip(),
+        request.form["role"],
+        password if password else None
+    )
+    flash("Staff member updated.", "success")
+    return redirect(url_for("staff"))
+
+@app.route("/staff/delete/<int:staff_id>", methods=["POST"])
+@admin_required
+def delete_staff_route(staff_id):
+    s = database.get_staff_by_id(staff_id)
+    if s and s["username"] == "admin":
+        flash("Cannot delete the default admin account.", "error")
+    else:
+        database.delete_staff(staff_id)
+        flash("Staff member deleted.", "success")
+    return redirect(url_for("staff"))
+
 
 # ── Reports ────────────────────────────────────────────────────────────────────
 @app.route("/reports")
 @login_required
 def reports():
     from datetime import date
-    selected = request.args.get("date", date.today().strftime("%Y-%m-%d"))
-    summary = database.get_daily_summary(selected)
-    top_items = database.get_top_items(selected, limit=10)
-    by_cat = database.get_sales_by_category(selected)
-    orders = database.get_orders_by_date_range(selected, selected, status="paid")
+    today = date.today().strftime("%Y-%m-%d")
+    start = request.args.get("start", today)
+    end = request.args.get("end", today)
+    summary = database.get_range_summary(start, end)
+    top_items = database.get_top_items_range(start, end, limit=10)
+    by_cat = database.get_sales_by_category_range(start, end)
+    orders = database.get_orders_by_date_range(start, end, status="paid")
+    breakdown = database.get_daily_breakdown(start, end) if start != end else []
     return render_template("reports.html",
                            summary=summary,
                            top_items=top_items,
                            by_cat=by_cat,
                            orders=orders,
-                           selected_date=selected,
+                           breakdown=breakdown,
+                           start=start, end=end,
                            currency=database.get_setting("currency_symbol", "KSh"),
                            cafe_name=database.get_setting("cafe_name"),
                            user=session["user"])
@@ -376,13 +409,184 @@ def orders():
     from datetime import date
     start = request.args.get("start", date.today().strftime("%Y-%m-%d"))
     end = request.args.get("end", date.today().strftime("%Y-%m-%d"))
-    all_orders = database.get_orders_by_date_range(start, end)
+    status_filter = request.args.get("status", "")
+    all_orders = database.get_orders_by_date_range(start, end, status=status_filter or None)
+    # Attach item counts
+    for o in all_orders:
+        o["item_count"] = database.get_order_item_count(o["id"])
     return render_template("orders.html",
                            orders=all_orders,
                            start=start, end=end,
+                           status_filter=status_filter,
                            currency=database.get_setting("currency_symbol", "KSh"),
                            cafe_name=database.get_setting("cafe_name"),
                            user=session["user"])
+
+
+# ── POS — Table Map ────────────────────────────────────────────────────────────
+@app.route("/pos")
+@login_required
+def pos():
+    tables = database.get_all_tables()
+    for t in tables:
+        t["open_order"] = database.get_open_order_for_table(t["id"])
+    return render_template("pos_tables.html",
+                           tables=tables,
+                           cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"),
+                           currency=database.get_setting("currency_symbol", "KSh"),
+                           user=session["user"])
+
+
+@app.route("/pos/new-order", methods=["POST"])
+@login_required
+def pos_new_order():
+    table_id = request.form.get("table_id") or None
+    if table_id:
+        table_id = int(table_id)
+        existing = database.get_open_order_for_table(table_id)
+        if existing:
+            return redirect(url_for("pos_order", order_id=existing["id"]))
+    else:
+        existing = database.get_open_takeaway_order(session["user"]["id"])
+        if existing:
+            return redirect(url_for("pos_order", order_id=existing["id"]))
+    order_id = database.create_order(session["user"]["id"], table_id)
+    return redirect(url_for("pos_order", order_id=order_id))
+
+
+@app.route("/pos/order/<int:order_id>")
+@login_required
+def pos_order(order_id):
+    data = database.get_order_with_items(order_id)
+    if not data:
+        flash("Order not found.", "error")
+        return redirect(url_for("pos"))
+    if data["order"]["status"] != "open":
+        return redirect(url_for("receipt", order_id=order_id))
+    categories = database.get_categories()
+    all_items = [i for i in database.get_all_items() if i["is_available"]]
+    return render_template("pos_order.html",
+                           order=data["order"],
+                           order_items=data["items"],
+                           categories=categories,
+                           items=all_items,
+                           cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"),
+                           currency=database.get_setting("currency_symbol", "KSh"),
+                           tax_rate=database.get_setting("tax_rate", "16"),
+                           user=session["user"])
+
+
+@app.route("/pos/order/<int:order_id>/void", methods=["POST"])
+@login_required
+def pos_void_order(order_id):
+    if session["user"]["role"] != "admin":
+        flash("Only admins can void orders.", "error")
+        return redirect(url_for("pos_order", order_id=order_id))
+    database.void_order(order_id)
+    flash("Order voided.", "success")
+    return redirect(url_for("pos"))
+
+
+@app.route("/pos/order/<int:order_id>/pay", methods=["GET", "POST"])
+@login_required
+def pos_pay(order_id):
+    data = database.get_order_with_items(order_id)
+    if not data:
+        flash("Order not found.", "error")
+        return redirect(url_for("pos"))
+    if data["order"]["status"] != "open":
+        return redirect(url_for("receipt", order_id=order_id))
+    if request.method == "POST":
+        method = request.form["payment_method"]
+        reference = request.form.get("payment_reference", "").strip()
+        tendered = float(request.form.get("amount_tendered", 0) or 0)
+        database.finalize_order(order_id, method, reference, tendered)
+        return redirect(url_for("receipt", order_id=order_id))
+    return render_template("pos_pay.html",
+                           order=data["order"],
+                           order_items=data["items"],
+                           cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"),
+                           currency=database.get_setting("currency_symbol", "KSh"),
+                           user=session["user"])
+
+
+@app.route("/receipt/<int:order_id>")
+@login_required
+def receipt(order_id):
+    data = database.get_order_with_items(order_id)
+    if not data:
+        flash("Receipt not found.", "error")
+        return redirect(url_for("pos"))
+    return render_template("receipt.html",
+                           order=data["order"],
+                           order_items=data["items"],
+                           cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"),
+                           currency=database.get_setting("currency_symbol", "KSh"),
+                           receipt_footer=database.get_setting("receipt_footer", "Thank you for dining with us!"),
+                           receipt_header=database.get_setting("receipt_header", ""),
+                           address=database.get_setting("address", ""),
+                           phone=database.get_setting("phone", ""),
+                           kra_pin=database.get_setting("kra_pin", ""),
+                           tax_rate=database.get_setting("tax_rate", "16"),
+                           user=session["user"])
+
+
+# ── Kitchen Display ────────────────────────────────────────────────────────────
+@app.route("/kitchen")
+@login_required
+def kitchen():
+    orders = database.get_open_orders_with_items()
+    return render_template("kitchen.html",
+                           orders=orders,
+                           cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"),
+                           user=session["user"])
+
+
+# ── Void from Orders page ──────────────────────────────────────────────────────
+@app.route("/orders/void/<int:order_id>", methods=["POST"])
+@admin_required
+def orders_void(order_id):
+    database.void_order(order_id)
+    flash("Order voided.", "success")
+    return redirect(url_for("orders"))
+
+
+# ── POS JSON API ───────────────────────────────────────────────────────────────
+@app.route("/api/order/<int:order_id>")
+@login_required
+def api_get_order(order_id):
+    data = database.get_order_with_items(order_id)
+    if not data:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(data)
+
+
+@app.route("/api/order/<int:order_id>/add-item", methods=["POST"])
+@login_required
+def api_add_item(order_id):
+    item_id = int(request.json["item_id"])
+    item = database.get_item_by_id(item_id)
+    if not item:
+        return jsonify({"error": "Item not found"}), 404
+    database.add_order_item(order_id, item_id, item["name"], item["price"])
+    return jsonify(database.get_order_with_items(order_id))
+
+
+@app.route("/api/order/<int:order_id>/update-item/<int:oi_id>", methods=["POST"])
+@login_required
+def api_update_item(order_id, oi_id):
+    qty = int(request.json["qty"])
+    database.update_order_item_qty(oi_id, qty)
+    return jsonify(database.get_order_with_items(order_id))
+
+
+@app.route("/api/order/<int:order_id>/set-discount", methods=["POST"])
+@login_required
+def api_set_discount(order_id):
+    dtype = request.json.get("type", "percent")
+    dval = float(request.json.get("value", 0))
+    database.set_order_discount(order_id, dtype, dval)
+    return jsonify(database.get_order_with_items(order_id))
 
 
 if __name__ == "__main__":
