@@ -83,7 +83,7 @@ echo.
 :: ── STEP 5: Create Desktop shortcut ──────────────────────────────────────
 echo [5/5] Creating Desktop shortcut...
 set SHORTCUT=%USERPROFILE%\Desktop\Queens Cafe POS.lnk
-powershell -Command "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%INSTALL_DIR%\start_pos.bat'; $s.WorkingDirectory='%INSTALL_DIR%'; $s.IconLocation='%SystemRoot%\System32\shell32.dll,137'; $s.Save()"
+powershell -Command "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%INSTALL_DIR%\start_web.bat'; $s.WorkingDirectory='%INSTALL_DIR%'; $s.IconLocation='%SystemRoot%\System32\shell32.dll,137'; $s.Save()"
 echo      Shortcut created on Desktop.
 echo.
 
@@ -91,10 +91,8 @@ echo ============================================================
 echo   INSTALLATION COMPLETE!
 echo.
 echo   Double-click "Queens Cafe POS" on the Desktop to start.
-echo   OR run: start_pos.bat
-echo.
-echo   Web dashboard: run start_web.bat
-echo   then open browser to http://localhost:5000
+echo   Then open browser to http://localhost:5000
+echo   Login: admin / admin123
 echo ============================================================
 echo.
 pause
