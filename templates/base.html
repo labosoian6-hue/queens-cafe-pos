@@ -104,18 +104,19 @@
     <a href="/pos" class="{{ 'active' if request.path.startswith('/pos') else '' }}">
       <span class="icon">🖥️</span> Make Order
     </a>
-    <a href="/setup" class="{{ 'active' if request.path == '/setup' else '' }}">
-      <span class="icon">⚙️</span> Setup Wizard
-    </a>
-    <a href="/menu" class="{{ 'active' if request.path == '/menu' else '' }}">
-      <span class="icon">🍽️</span> Menu & Prices
-    </a>
     <a href="/tables" class="{{ 'active' if request.path == '/tables' else '' }}">
       <span class="icon">🪑</span> Tables
     </a>
     <a href="/orders" class="{{ 'active' if request.path == '/orders' else '' }}">
       <span class="icon">🧾</span> Orders
     </a>
+    <a href="/menu" class="{{ 'active' if request.path == '/menu' else '' }}">
+      <span class="icon">🍽️</span> Menu & Prices
+    </a>
+    <a href="/training" target="_blank" class="{{ 'active' if request.path == '/training' else '' }}">
+      <span class="icon">📖</span> Training Manual
+    </a>
+    {% if user.role == 'admin' %}
     <a href="/reports" class="{{ 'active' if request.path == '/reports' else '' }}">
       <span class="icon">📈</span> Reports
     </a>
@@ -125,17 +126,16 @@
     <a href="/menu/modifiers" class="{{ 'active' if request.path == '/menu/modifiers' else '' }}">
       <span class="icon">🧩</span> Modifiers
     </a>
-    {% if user.role == 'admin' %}
     <a href="/staff" class="{{ 'active' if request.path == '/staff' else '' }}">
       <span class="icon">👤</span> Staff
     </a>
     <a href="/settings" class="{{ 'active' if request.path == '/settings' else '' }}">
       <span class="icon">🔧</span> Settings
     </a>
-    {% endif %}
-    <a href="/training" target="_blank" class="{{ 'active' if request.path == '/training' else '' }}">
-      <span class="icon">📖</span> Training Manual
+    <a href="/setup" class="{{ 'active' if request.path == '/setup' else '' }}">
+      <span class="icon">⚙️</span> Setup Wizard
     </a>
+    {% endif %}
   </nav>
   <div class="sidebar-footer">
     <strong>{{ user.full_name }}</strong>
