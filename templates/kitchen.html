@@ -65,7 +65,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-heig
       <div class="elapsed fresh" id="el-{{ o.order.id }}">...</div>
     </div>
     <div class="c-items">
-      {% for item in o.items %}
+      {% for item in o['items'] %}
       <div class="i-row">
         <div class="i-qty">{{ item.quantity }}</div>
         <div>
