@@ -5,37 +5,136 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ cafe_name }} — Login</title>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
-  .card{background:#1e293b;border-radius:16px;padding:40px 44px;width:380px;border:1px solid #334155}
-  h1{font-size:22px;font-weight:700;color:#7c83fd;text-align:center;margin-bottom:4px}
-  .sub{text-align:center;color:#64748b;font-size:13px;margin-bottom:28px}
-  label{display:block;font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:5px}
-  input{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px 14px;border-radius:8px;font-size:14px;outline:none;margin-bottom:16px}
-  input:focus{border-color:#7c83fd}
-  button{width:100%;background:#7c83fd;color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px}
-  button:hover{background:#6366f1}
-  .error{background:#7f1d1d;color:#f87171;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;border:1px solid #991b1b}
-  .hint{text-align:center;color:#475569;font-size:11px;margin-top:16px}
-  .info-msg{background:#1e3a5f;color:#60a5fa;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;border:1px solid #1d4ed8}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.wrap{width:420px;max-width:95vw}
+.card{background:#1e293b;border-radius:16px;padding:36px 40px;border:1px solid #334155}
+h1{font-size:22px;font-weight:700;color:#7c83fd;text-align:center;margin-bottom:4px}
+.sub{text-align:center;color:#64748b;font-size:13px;margin-bottom:24px}
+.error{background:#7f1d1d;color:#f87171;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;border:1px solid #991b1b}
+.info-msg{background:#1e3a5f;color:#60a5fa;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;border:1px solid #1d4ed8}
+
+/* Tabs */
+.tabs{display:flex;background:#0f172a;border-radius:10px;padding:4px;margin-bottom:24px;gap:4px}
+.tab{flex:1;padding:9px;text-align:center;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;border:none;background:none;transition:all .2s}
+.tab.active{background:#1e293b;color:#e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+
+/* PIN section */
+.pin-display{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:14px;text-align:center;font-size:28px;font-weight:700;letter-spacing:10px;color:#7c83fd;margin-bottom:16px;min-height:58px}
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.pk{background:#334155;border:none;color:#e2e8f0;border-radius:10px;padding:16px;font-size:18px;font-weight:700;cursor:pointer;transition:all .15s}
+.pk:hover{background:#475569}
+.pk.del{background:#7f1d1d;color:#f87171}
+.pk.del:hover{background:#991b1b}
+.pk-enter{width:100%;background:#16a34a;color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer}
+.pk-enter:hover{background:#15803d}
+
+/* Admin section */
+label{display:block;font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:5px}
+input{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px 14px;border-radius:8px;font-size:14px;outline:none;margin-bottom:16px}
+input:focus{border-color:#7c83fd}
+.btn-login{width:100%;background:#7c83fd;color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}
+.btn-login:hover{background:#6366f1}
+.hint{text-align:center;color:#475569;font-size:11px;margin-top:14px}
 </style>
 </head>
 <body>
-<div class="card">
-  <h1>☕ {{ cafe_name }}</h1>
-  <p class="sub">Web Admin Dashboard</p>
-  {% if error %}<div class="error">{{ error }}</div>{% endif %}
-  <div id="msgBanner" class="info-msg" style="display:none"></div>
-  <form method="POST">
-    <label>Username</label>
-    <input type="text" name="username" autofocus autocomplete="off">
-    <label>Password</label>
-    <input type="password" name="password">
-    <button type="submit">Log In →</button>
-  </form>
-  <p class="hint">Default: admin / admin123</p>
+<div class="wrap">
+  <div class="card">
+    <h1>☕ {{ cafe_name }}</h1>
+    <p class="sub">Point of Sale System</p>
+
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <div id="msgBanner" class="info-msg" style="display:none"></div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" id="tabPin" onclick="showTab('pin')">🔢 Staff PIN Login</button>
+      <button class="tab" id="tabAdmin" onclick="showTab('admin')">🔐 Admin Login</button>
+    </div>
+
+    <!-- PIN Login -->
+    <div id="sectionPin">
+      <form method="POST" id="pinForm">
+        <input type="hidden" name="login_type" value="pin">
+        <input type="hidden" name="pin" id="pinValue">
+        <div class="pin-display" id="pinDisplay">——</div>
+        <div class="pinpad">
+          <button type="button" class="pk" onclick="addDigit('1')">1</button>
+          <button type="button" class="pk" onclick="addDigit('2')">2</button>
+          <button type="button" class="pk" onclick="addDigit('3')">3</button>
+          <button type="button" class="pk" onclick="addDigit('4')">4</button>
+          <button type="button" class="pk" onclick="addDigit('5')">5</button>
+          <button type="button" class="pk" onclick="addDigit('6')">6</button>
+          <button type="button" class="pk" onclick="addDigit('7')">7</button>
+          <button type="button" class="pk" onclick="addDigit('8')">8</button>
+          <button type="button" class="pk" onclick="addDigit('9')">9</button>
+          <button type="button" class="pk del" onclick="delDigit()">⌫</button>
+          <button type="button" class="pk" onclick="addDigit('0')">0</button>
+          <button type="button" class="pk del" onclick="clearPin()">C</button>
+        </div>
+        <button type="submit" class="pk-enter">Login →</button>
+      </form>
+      {% if not cashiers %}
+      <p style="text-align:center;color:#64748b;font-size:12px;margin-top:14px">No staff PINs set yet. Admin must assign PINs from the Staff page.</p>
+      {% endif %}
+    </div>
+
+    <!-- Admin Login -->
+    <div id="sectionAdmin" style="display:none">
+      <form method="POST">
+        <input type="hidden" name="login_type" value="admin">
+        <label>Username</label>
+        <input type="text" name="username" autofocus autocomplete="off">
+        <label>Password</label>
+        <input type="password" name="password">
+        <button type="submit" class="btn-login">Log In →</button>
+      </form>
+      <p class="hint">Default: admin / admin123</p>
+    </div>
+  </div>
 </div>
+
 <script>
+var pin = '';
+
+function showTab(t){
+  document.getElementById('sectionPin').style.display = t==='pin'?'':'none';
+  document.getElementById('sectionAdmin').style.display = t==='admin'?'':'none';
+  document.getElementById('tabPin').classList.toggle('active', t==='pin');
+  document.getElementById('tabAdmin').classList.toggle('active', t==='admin');
+}
+
+function updateDisplay(){
+  var d = document.getElementById('pinDisplay');
+  d.textContent = pin.length > 0 ? '•'.repeat(pin.length) : '——';
+}
+
+function addDigit(d){
+  if(pin.length >= 6) return;
+  pin += d;
+  updateDisplay();
+}
+
+function delDigit(){
+  pin = pin.slice(0,-1);
+  updateDisplay();
+}
+
+function clearPin(){
+  pin = '';
+  updateDisplay();
+}
+
+document.getElementById('pinForm').addEventListener('submit', function(){
+  document.getElementById('pinValue').value = pin;
+});
+
+// Show error on PIN tab if error came from PIN login
+{% if error %}
+showTab('pin');
+{% endif %}
+
 (function(){
   var params = new URLSearchParams(window.location.search);
   var msg = params.get('msg');

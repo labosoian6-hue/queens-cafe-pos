@@ -43,14 +43,25 @@ def login():
         return redirect(url_for("dashboard"))
     error = None
     if request.method == "POST":
-        user = database.verify_password(
-            request.form["username"], request.form["password"]
-        )
-        if user:
-            session["user"] = dict(user)
-            return redirect(url_for("dashboard"))
-        error = "Invalid username or password."
+        login_type = request.form.get("login_type", "admin")
+        if login_type == "pin":
+            pin = request.form.get("pin", "").strip()
+            user = database.verify_pin(pin)
+            if user:
+                session["user"] = dict(user)
+                return redirect(url_for("dashboard"))
+            error = "Incorrect PIN. Please try again."
+        else:
+            user = database.verify_password(
+                request.form["username"], request.form["password"]
+            )
+            if user:
+                session["user"] = dict(user)
+                return redirect(url_for("dashboard"))
+            error = "Invalid username or password."
+    cashiers = database.get_active_cashiers()
     return render_template("login.html", error=error,
+                           cashiers=cashiers,
                            cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"))
 
 @app.route("/logout")
@@ -322,6 +333,18 @@ def edit_staff(staff_id):
     )
     flash("Staff member updated.", "success")
     return redirect(url_for("staff"))
+
+@app.route("/staff/set-pin/<int:staff_id>", methods=["POST"])
+@admin_required
+def set_staff_pin(staff_id):
+    pin = request.form.get("pin", "").strip()
+    if len(pin) < 4:
+        flash("PIN must be at least 4 digits.", "error")
+        return redirect(url_for("staff"))
+    database.set_staff_pin(staff_id, pin)
+    flash("PIN updated successfully.", "success")
+    return redirect(url_for("staff"))
+
 
 @app.route("/staff/delete/<int:staff_id>", methods=["POST"])
 @admin_required

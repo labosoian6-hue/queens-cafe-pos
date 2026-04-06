@@ -181,7 +181,8 @@ def initialize_db():
     # Migrations – safe to re-run
     for migration in [
         "ALTER TABLE order_items ADD COLUMN notes TEXT DEFAULT ''",
-        "ALTER TABLE order_items ADD COLUMN is_split_voided INTEGER DEFAULT 0"
+        "ALTER TABLE order_items ADD COLUMN is_split_voided INTEGER DEFAULT 0",
+        "ALTER TABLE staff ADD COLUMN pin TEXT DEFAULT NULL"
     ]:
         try:
             c.execute(migration)
@@ -236,6 +237,32 @@ def verify_password(username, password):
     ).fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+def verify_pin(pin: str):
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT * FROM staff WHERE pin=? AND role != 'admin' AND is_active=1",
+        (_hash(pin),)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_active_cashiers():
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT id, full_name, role FROM staff WHERE is_active=1 AND role != 'admin' AND pin IS NOT NULL ORDER BY full_name"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def set_staff_pin(staff_id: int, pin: str):
+    conn = get_connection()
+    conn.execute("UPDATE staff SET pin=? WHERE id=?", (_hash(pin), staff_id))
+    conn.commit()
+    conn.close()
 
 
 def create_staff(username, password, full_name, role):
