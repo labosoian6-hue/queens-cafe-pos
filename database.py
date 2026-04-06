@@ -117,7 +117,9 @@ def initialize_db():
         "cafe_name": "MY CAFE",
         "tax_rate": "16",
         "currency_symbol": "KSh",
-        "receipt_footer": "Thank you for dining with us!"
+        "receipt_footer": "Thank you for dining with us!",
+        "printer_connection": "",
+        "printer_address": "",
     }
     for k, v in defaults.items():
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?,?)", (k, v))

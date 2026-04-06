@@ -8,6 +8,7 @@ import os, csv, tempfile
 
 import database
 import auth
+import printer
 
 # ── Theme ──────────────────────────────────────────────────────────────────────
 BG      = "#1a1a2e"
@@ -622,6 +623,7 @@ class ReceiptWindow(tk.Toplevel):
             lbl(self, "Order not found.", color=ACCENT).pack(pady=20)
             return
 
+        self._order_data = data
         order = data["order"]
         items = data["items"]
         cafe = database.get_setting("cafe_name", "CAFE POS")
@@ -687,6 +689,9 @@ class ReceiptWindow(tk.Toplevel):
         txt.pack()
         btn(left_col, "Print / Save Customer", lambda: self._save(receipt_text, "receipt"),
             color=GREEN, size=9).pack(pady=(6, 0), fill="x")
+        btn(left_col, "Send to Thermal Printer",
+            lambda: self._thermal_print(self._order_data, receipt_type="customer"),
+            color=ACCENT, size=9).pack(pady=(4, 0), fill="x")
 
         # Kitchen receipt column
         kitchen_lines = self._build_kitchen_lines(order, items, table)
@@ -703,6 +708,9 @@ class ReceiptWindow(tk.Toplevel):
         ktxt.pack()
         btn(right_col, "Print / Save Kitchen", lambda: self._save(kitchen_text, "kitchen"),
             color=YELLOW, fg=BG, size=9).pack(pady=(6, 0), fill="x")
+        btn(right_col, "Send to Thermal Printer",
+            lambda: self._thermal_print(self._order_data, receipt_type="kitchen"),
+            color=ORANGE, fg=BG, size=9).pack(pady=(4, 0), fill="x")
 
         self.geometry(f"+{parent.winfo_rootx()+50}+{parent.winfo_rooty()+30}")
 
@@ -742,6 +750,45 @@ class ReceiptWindow(tk.Toplevel):
         except Exception:
             pass
         messagebox.showinfo("Saved", f"Saved to:\n{path}", parent=self)
+
+    def _thermal_print(self, data, receipt_type="customer"):
+        conn_type = database.get_setting("printer_connection", "").strip()
+        address   = database.get_setting("printer_address", "").strip()
+
+        if not conn_type or not address:
+            messagebox.showerror(
+                "Printer Not Configured",
+                "Please configure the thermal printer in Settings first.\n\n"
+                "Connection type: network or usb\n"
+                "Address: IP (e.g. 192.168.1.100) or USB printer name",
+                parent=self
+            )
+            return
+
+        order  = data["order"]
+        items  = data["items"]
+        cafe   = database.get_setting("cafe_name", "CAFE POS")
+        currency  = database.get_setting("currency_symbol", "KSh")
+        footer    = database.get_setting("receipt_footer", "")
+        tax_rate  = database.get_setting("tax_rate", "16")
+        address_t = database.get_setting("address", "")
+        phone     = database.get_setting("phone", "")
+        kra_pin   = database.get_setting("kra_pin", "")
+        header    = database.get_setting("receipt_header", "")
+
+        try:
+            if receipt_type == "customer":
+                raw = printer.build_customer_receipt(
+                    order, items, cafe, currency, footer, tax_rate,
+                    address=address_t, phone=phone, kra_pin=kra_pin, receipt_header=header
+                )
+            else:
+                raw = printer.build_kitchen_receipt(order, items, cafe)
+
+            printer.send_to_printer(raw, conn_type, address)
+            messagebox.showinfo("Printed", "Receipt sent to thermal printer.", parent=self)
+        except Exception as exc:
+            messagebox.showerror("Print Error", str(exc), parent=self)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1377,6 +1424,8 @@ class SettingsScreen(tk.Frame):
             ("tax_rate", "Tax Rate (%)"),
             ("currency_symbol", "Currency Symbol"),
             ("receipt_footer", "Receipt Footer Text"),
+            ("printer_connection", "Printer Connection  (network  or  usb)"),
+            ("printer_address",   "Printer Address  (IP e.g. 192.168.1.100  or  Windows printer name)"),
         ]
         self.vars = {}
         for key, label_text in fields:
