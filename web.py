@@ -503,6 +503,34 @@ def pos_pay(order_id):
                            user=session["user"])
 
 
+@app.route("/pos/order/<int:order_id>/kitchen-ticket")
+@login_required
+def kitchen_ticket(order_id):
+    data = database.get_order_with_items(order_id)
+    if not data:
+        return "Order not found", 404
+    return render_template("kitchen_ticket.html",
+                           order=data["order"],
+                           order_items=data["items"],
+                           cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"))
+
+
+@app.route("/pos/order/<int:order_id>/order-slip")
+@login_required
+def order_slip(order_id):
+    data = database.get_order_with_items(order_id)
+    if not data:
+        return "Order not found", 404
+    return render_template("order_slip.html",
+                           order=data["order"],
+                           order_items=data["items"],
+                           cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"),
+                           currency=database.get_setting("currency_symbol", "KSh"),
+                           address=database.get_setting("address", ""),
+                           phone=database.get_setting("phone", ""),
+                           tax_rate=database.get_setting("tax_rate", "16"))
+
+
 @app.route("/receipt/<int:order_id>")
 @login_required
 def receipt(order_id):

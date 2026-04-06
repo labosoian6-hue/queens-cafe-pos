@@ -28,6 +28,9 @@
   </div>
   <div class="flex">
     <button onclick="window.print()" class="btn btn-ghost">🖨️ Print Receipt</button>
+    {% if order.status == 'paid' %}
+    <script>window.onload=function(){window.print();}</script>
+    {% endif %}
     {% if order.status == 'open' %}
     <a href="/pos/order/{{ order.id }}" class="btn btn-warn">← Back to Order</a>
     {% else %}

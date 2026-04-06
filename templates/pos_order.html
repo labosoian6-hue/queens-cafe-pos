@@ -169,13 +169,14 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;height:1
       <div class="tot-row" style="color:#f87171"><span>Discount</span><span id="discAmt">- {{ currency }} 0</span></div>
       <div class="tot-row"><span>VAT ({{ tax_rate }}%)</span><span id="taxAmt">{{ currency }} 0</span></div>
       <div class="tot-row grand"><span>TOTAL</span><span id="grandTotal">{{ currency }} 0</span></div>
-      <div class="act-row">
+      <div class="act-row" style="flex-wrap:wrap;gap:7px">
         {% if user.role == 'admin' %}
         <form method="POST" action="/pos/order/{{ order.id }}/void" onsubmit="return confirm('Void this entire order?')">
           <button class="btn-void" type="submit">🗑</button>
         </form>
         {% endif %}
         <button class="btn-split" id="splitBtn" disabled onclick="goToSplit()" title="Split Bill">⚡ Split</button>
+        <button class="btn-kitchen" id="kitchenBtn" disabled onclick="sendToKitchen()" style="background:#b45309;color:#fef3c7;border:none;border-radius:8px;padding:10px 11px;font-size:12px;font-weight:700;cursor:pointer" title="Print kitchen ticket + customer slip">🍳 Send</button>
         <button class="btn-pay" id="payBtn" disabled onclick="goToPay()">PAY →</button>
       </div>
     </div>
@@ -339,13 +340,24 @@ function renderOrder(data){
 
   const payBtn=document.getElementById('payBtn');
   const splitBtn=document.getElementById('splitBtn');
+  const kitchenBtn=document.getElementById('kitchenBtn');
   payBtn.disabled=items.length===0;
   splitBtn.disabled=items.length===0;
+  kitchenBtn.disabled=items.length===0;
   payBtn.textContent=items.length===0?'PAY →':'PAY '+fmt(order.total)+' →';
 }
 
 function goToPay(){window.location.href='/pos/order/'+ORDER_ID+'/pay'}
 function goToSplit(){window.location.href='/pos/order/'+ORDER_ID+'/split'}
+
+function sendToKitchen(){
+  // Print kitchen ticket
+  const kt = window.open('/pos/order/'+ORDER_ID+'/kitchen-ticket','_blank','width=400,height=600');
+  // Print customer order slip after a short delay
+  setTimeout(function(){
+    window.open('/pos/order/'+ORDER_ID+'/order-slip','_blank','width=400,height=600');
+  }, 800);
+}
 
 function promptNote(oiId, currentNote){
   const note=prompt('Special instructions for this item:',currentNote||'');
