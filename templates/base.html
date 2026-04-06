@@ -99,10 +99,10 @@
   </div>
   <nav>
     <a href="/dashboard" class="{{ 'active' if request.path == '/dashboard' else '' }}">
-      <span class="icon">📊</span> Dashboard
+      <span class="icon">🏠</span> Home
     </a>
     <a href="/pos" class="{{ 'active' if request.path.startswith('/pos') else '' }}">
-      <span class="icon">🖥️</span> Take Order (POS)
+      <span class="icon">🖥️</span> Make Order
     </a>
     <a href="/kitchen" class="{{ 'active' if request.path == '/kitchen' else '' }}">
       <span class="icon">🍳</span> Kitchen Display
@@ -148,6 +148,9 @@
 </div>
 
 <div class="main">
+  <div style="margin-bottom:10px">
+    <a href="javascript:history.back()" class="btn btn-ghost btn-sm">← Back</a>
+  </div>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}
       <div class="alert alert-{{ 'success' if cat == 'success' else ('info' if cat == 'info' else 'error') }}">{{ msg }}</div>
