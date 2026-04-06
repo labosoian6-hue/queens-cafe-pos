@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Queens Cafe Hotel — Staff Training Manual</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#111;background:#fff;padding:20px}
+h1{font-size:24px;font-weight:900;color:#92400e;text-align:center;margin-bottom:4px}
+h2{font-size:16px;font-weight:800;color:#fff;background:#92400e;padding:8px 14px;border-radius:6px;margin:24px 0 10px}
+h3{font-size:13px;font-weight:700;color:#92400e;margin:14px 0 6px;border-bottom:1px solid #fde68a;padding-bottom:3px}
+.subtitle{text-align:center;color:#555;font-size:12px;margin-bottom:6px}
+.cover{text-align:center;border:2px solid #92400e;border-radius:10px;padding:20px;margin-bottom:28px;background:#fffbeb}
+.cover .logo{font-size:40px;margin-bottom:8px}
+.cover .version{font-size:11px;color:#888;margin-top:8px}
+p{margin-bottom:8px;line-height:1.6}
+ul,ol{margin:6px 0 10px 20px;line-height:1.8}
+li{margin-bottom:2px}
+.step{display:flex;gap:12px;margin:8px 0;align-items:flex-start}
+.step-num{background:#92400e;color:#fff;border-radius:50%;width:24px;height:24px;min-width:24px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+.step-body{flex:1}
+.note{background:#fef3c7;border-left:4px solid #f59e0b;padding:8px 12px;border-radius:0 6px 6px 0;margin:10px 0;font-size:12px}
+.warn{background:#fee2e2;border-left:4px solid #ef4444;padding:8px 12px;border-radius:0 6px 6px 0;margin:10px 0;font-size:12px}
+.tip{background:#d1fae5;border-left:4px solid #10b981;padding:8px 12px;border-radius:0 6px 6px 0;margin:10px 0;font-size:12px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12px}
+table th{background:#92400e;color:#fff;padding:7px 10px;text-align:left}
+table td{padding:7px 10px;border-bottom:1px solid #e5e7eb}
+table tr:nth-child(even) td{background:#fffbeb}
+.print-btn{position:fixed;top:14px;right:14px;background:#92400e;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:999}
+.print-btn:hover{background:#78350f}
+.page-break{page-break-before:always}
+.toc{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 20px;margin-bottom:20px}
+.toc h3{border:none;margin-top:0}
+.toc ol{margin-left:16px}
+.toc li{margin-bottom:4px;font-size:12px}
+.section{margin-bottom:20px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-green{background:#d1fae5;color:#065f46}
+.badge-red{background:#fee2e2;color:#991b1b}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.badge-yellow{background:#fef3c7;color:#92400e}
+@media print{
+  .print-btn{display:none}
+  body{padding:10px}
+  @page{margin:15mm;size:A4}
+  h2{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  table th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cover{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .page-break{page-break-before:always}
+}
+</style>
+</head>
+<body>
+
+<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="logo">☕</div>
+  <h1>QUEENS CAFE HOTEL</h1>
+  <div class="subtitle">Point of Sale System</div>
+  <div style="font-size:18px;font-weight:700;color:#92400e;margin:10px 0">STAFF TRAINING MANUAL</div>
+  <div style="font-size:12px;color:#555">For Waiters, Cashiers & Kitchen Staff</div>
+  <div class="version">Version 1.0 &nbsp;|&nbsp; April 2026</div>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <h3>Table of Contents</h3>
+  <ol>
+    <li>Introduction & System Overview</li>
+    <li>How to Log In</li>
+    <li>Taking an Order (Waiter)</li>
+    <li>Sending Order to Kitchen</li>
+    <li>Processing Payment (Cashier)</li>
+    <li>Kitchen Display (Kitchen Staff)</li>
+    <li>Menu Management (Admin)</li>
+    <li>Staff Management (Admin)</li>
+    <li>Reports & Z-Report (Admin)</li>
+    <li>Important Rules & Tips</li>
+  </ol>
+</div>
+
+<!-- SECTION 1 -->
+<div class="section">
+<h2>1. Introduction & System Overview</h2>
+<p>The Queens Cafe Hotel POS system is a web-based point of sale system. It runs on a computer and is accessed through a browser (Chrome or Edge) at:</p>
+<p style="text-align:center;font-size:16px;font-weight:700;background:#fffbeb;padding:8px;border-radius:6px">http://localhost:5000</p>
+
+<h3>Who Uses What</h3>
+<table>
+  <tr><th>Role</th><th>What They Do</th><th>Access</th></tr>
+  <tr><td><b>Waiter</b></td><td>Takes orders, sends to kitchen, prints order slip</td><td>POS Screen</td></tr>
+  <tr><td><b>Cashier</b></td><td>Processes payments, prints receipts</td><td>POS + Payment Screen</td></tr>
+  <tr><td><b>Kitchen Staff</b></td><td>Views orders on kitchen display</td><td>Kitchen Screen</td></tr>
+  <tr><td><b>Admin/Manager</b></td><td>Full access — menu, staff, reports, settings</td><td>All Screens</td></tr>
+</table>
+
+<h3>Default Login</h3>
+<table>
+  <tr><th>Username</th><th>Password</th><th>Role</th></tr>
+  <tr><td>admin</td><td>admin123</td><td>Admin / Manager</td></tr>
+</table>
+<div class="warn"><b>Important:</b> Change the default password immediately after first login. Go to Settings → Change Password.</div>
+</div>
+
+<!-- SECTION 2 -->
+<div class="section page-break">
+<h2>2. How to Log In</h2>
+
+<div class="step"><div class="step-num">1</div><div class="step-body">Open the browser (Chrome or Edge) on the cafe computer.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-body">Type <b>http://localhost:5000</b> in the address bar and press Enter.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-body">The login page will appear. Enter your <b>Username</b> and <b>Password</b>.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-body">Click <b>Login</b>. You will be taken to the Dashboard.</div></div>
+
+<div class="note"><b>Note:</b> The system will lock automatically after 15 minutes of no activity. Just log in again.</div>
+
+<h3>How to Log Out</h3>
+<p>Click your name at the bottom of the left menu → click <b>Logout</b>.</p>
+</div>
+
+<!-- SECTION 3 -->
+<div class="section">
+<h2>3. Taking an Order (Waiter)</h2>
+
+<div class="step"><div class="step-num">1</div><div class="step-body">From the left menu click <b>Take Order (POS)</b>.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-body">A list of tables will appear. Click the <b>table number</b> where the customer is sitting. For takeaway click <b>Takeaway</b>.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-body">The order screen opens. On the left side you will see the menu items.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-body">Use the <b>category buttons</b> at the top to filter by food type (Chicken, Beef, Fish, Drinks, etc.).</div></div>
+<div class="step"><div class="step-num">5</div><div class="step-body">Tap/click an item to add it to the order. It will appear on the right side (Order Ticket).</div></div>
+<div class="step"><div class="step-num">6</div><div class="step-body">To <b>increase quantity</b> tap the <b>+</b> button next to the item. To reduce tap <b>−</b>. To remove tap <b>×</b>.</div></div>
+<div class="step"><div class="step-num">7</div><div class="step-body">To add a <b>special instruction</b> (e.g. no onions), tap the 📝 note icon next to the item and type the instruction.</div></div>
+
+<div class="tip"><b>Tip:</b> Use the search bar at the top to quickly find any item by name.</div>
+
+<h3>Searching for Items</h3>
+<p>Type part of the item name in the search bar. For example type "fish" to see all fish items.</p>
+</div>
+
+<!-- SECTION 4 -->
+<div class="section">
+<h2>4. Sending Order to Kitchen</h2>
+
+<p>Once all items are added to the order:</p>
+
+<div class="step"><div class="step-num">1</div><div class="step-body">Click the <b>🍳 Send</b> button (orange button) at the bottom of the Order Ticket.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-body">Two print windows will open automatically:
+  <ul>
+    <li><b>Kitchen Ticket</b> — prints for kitchen staff (shows items + quantities)</li>
+    <li><b>Customer Order Slip</b> — prints for the customer (shows items + total to pay later)</li>
+  </ul>
+</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-body">Make sure the printer is on. The tickets will print automatically.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-body">Give the <b>Customer Order Slip</b> to the customer. Take the <b>Kitchen Ticket</b> to the kitchen (or the kitchen screen will show it).</div></div>
+
+<div class="note"><b>Note:</b> The customer pays AFTER dining, not at the time of ordering.</div>
+</div>
+
+<!-- SECTION 5 -->
+<div class="section page-break">
+<h2>5. Processing Payment (Cashier)</h2>
+
+<p>When the customer is done dining and ready to pay:</p>
+
+<div class="step"><div class="step-num">1</div><div class="step-body">Go to <b>Take Order (POS)</b> from the left menu.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-body">Click on the customer's table. The order will open.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-body">Click the green <b>PAY</b> button at the bottom right.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-body">Select the payment method:
+  <ul>
+    <li><b>Cash</b> — enter amount given by customer, system calculates change</li>
+    <li><b>M-Pesa</b> — enter M-Pesa reference number</li>
+    <li><b>Card</b> — enter card reference</li>
+  </ul>
+</div></div>
+<div class="step"><div class="step-num">5</div><div class="step-body">Click <b>Confirm Payment</b>. The receipt will print automatically.</div></div>
+<div class="step"><div class="step-num">6</div><div class="step-body">Give the receipt to the customer.</div></div>
+
+<h3>Giving a Discount</h3>
+<p>On the order screen, enter a discount amount before clicking PAY.</p>
+<ul>
+  <li>Select <b>%</b> for percentage discount or <b>KSh</b> for fixed amount</li>
+  <li>Discounts above 10% require a <b>Manager PIN</b></li>
+</ul>
+
+<h3>Split Bill</h3>
+<p>If customers want to split the bill, click the <b>⚡ Split</b> button and follow the instructions on screen.</p>
+</div>
+
+<!-- SECTION 6 -->
+<div class="section">
+<h2>6. Kitchen Display (Kitchen Staff)</h2>
+
+<div class="step"><div class="step-num">1</div><div class="step-body">From the left menu click <b>Kitchen Display</b>.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-body">All open orders are shown as cards. Each card shows the table number, items, and time.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-body">When an order is ready, click <b>Order Ready</b> (bump button) on that card.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-body">The order is removed from the kitchen screen and the waiter is notified.</div></div>
+
+<div class="note"><b>Note:</b> The kitchen screen refreshes automatically every 30 seconds. You can also refresh manually.</div>
+</div>
+
+<!-- SECTION 7 -->
+<div class="section page-break">
+<h2>7. Menu Management (Admin Only)</h2>
+
+<h3>Adding a New Item</h3>
+<div class="step"><div class="step-num">1</div><div class="step-body">From the left menu click <b>Menu & Prices</b>.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-body">Click <b>Add Item</b>.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-body">Enter the item name, price, and category.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-body">Click <b>Save</b>.</div></div>
+
+<h3>Editing a Price</h3>
+<div class="step"><div class="step-num">1</div><div class="step-body">Go to <b>Menu & Prices</b>.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-body">Find the item and click <b>Edit</b>.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-body">Change the price and click <b>Save</b>.</div></div>
+
+<h3>Marking Item as Unavailable</h3>
+<p>If an item is out of stock, click <b>Edit</b> next to the item and uncheck <b>Available</b>. It will be hidden from the order screen until you make it available again.</p>
+</div>
+
+<!-- SECTION 8 -->
+<div class="section">
+<h2>8. Staff Management (Admin Only)</h2>
+
+<h3>Adding a New Staff Member</h3>
+<div class="step"><div class="step-num">1</div><div class="step-body">From the left menu click <b>Staff</b>.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-body">Click <b>Add Staff</b>.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-body">Enter full name, username, password, and role (Admin or Waiter).</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-body">Click <b>Save</b>.</div></div>
+
+<h3>Staff Roles</h3>
+<table>
+  <tr><th>Role</th><th>Can Do</th></tr>
+  <tr><td><b>Admin</b></td><td>Everything — menu, staff, reports, settings, voids</td></tr>
+  <tr><td><b>Waiter</b></td><td>Take orders, send to kitchen, process payments</td></tr>
+</table>
+</div>
+
+<!-- SECTION 9 -->
+<div class="section">
+<h2>9. Reports & Z-Report (Admin Only)</h2>
+
+<h3>Daily Sales Report</h3>
+<div class="step"><div class="step-num">1</div><div class="step-body">Click <b>Reports</b> from the left menu.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-body">Select the date range and click <b>Generate</b>.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-body">You can see total sales, number of orders, and top-selling items.</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-body">Click <b>Export CSV</b> to download the report to Excel.</div></div>
+
+<h3>Z-Report (End of Day)</h3>
+<p>The Z-Report is run at the end of every working day to close the shift.</p>
+<div class="step"><div class="step-num">1</div><div class="step-body">Click <b>Z-Report</b> from the left menu.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-body">Click <b>Generate Z-Report</b>.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-body">Print the report and file it for records.</div></div>
+
+<div class="warn"><b>Important:</b> Run the Z-Report every day before closing. Do not skip this step.</div>
+</div>
+
+<!-- SECTION 10 -->
+<div class="section page-break">
+<h2>10. Important Rules & Tips</h2>
+
+<h3>Daily Opening Procedure</h3>
+<ol>
+  <li>Turn on the computer</li>
+  <li>Open Chrome or Edge browser</li>
+  <li>Go to <b>http://localhost:5000</b></li>
+  <li>Log in with your username and password</li>
+  <li>You are ready to take orders</li>
+</ol>
+
+<h3>Daily Closing Procedure</h3>
+<ol>
+  <li>Make sure all orders are paid</li>
+  <li>Run the <b>Z-Report</b> (Admin)</li>
+  <li>Print and file the Z-Report</li>
+  <li>Log out of the system</li>
+  <li>Close the browser</li>
+</ol>
+
+<h3>Common Issues & Solutions</h3>
+<table>
+  <tr><th>Problem</th><th>Solution</th></tr>
+  <tr><td>System not opening in browser</td><td>Make sure the black command window is still open. If closed, double-click the Queens Cafe POS shortcut on Desktop.</td></tr>
+  <tr><td>Forgot password</td><td>Call the manager/admin to reset it from the Staff page.</td></tr>
+  <tr><td>Item not showing on POS</td><td>Admin must check if the item is marked as Available in Menu & Prices.</td></tr>
+  <tr><td>Printer not printing</td><td>Check printer is on and connected. Try clicking Print again.</td></tr>
+  <tr><td>Session locked / logged out</td><td>Normal after 15 minutes. Just log in again.</td></tr>
+  <tr><td>Wrong item added to order</td><td>Tap × next to the item to remove it before sending to kitchen.</td></tr>
+</table>
+
+<h3>Rules for All Staff</h3>
+<ul>
+  <li>Never share your password with anyone</li>
+  <li>Always log out when leaving the counter</li>
+  <li>Never void an order without manager approval</li>
+  <li>Always give the customer their receipt</li>
+  <li>Report any system problems to the manager immediately</li>
+</ul>
+
+<div class="tip"><b>Remember:</b> If you are unsure about anything, ask the manager before proceeding. It is better to ask than to make a mistake.</div>
+
+<br>
+<div style="text-align:center;color:#92400e;font-weight:700;font-size:14px;border-top:2px solid #92400e;padding-top:14px;margin-top:20px">
+  Queens Cafe Hotel — POS Training Manual v1.0<br>
+  <span style="font-size:11px;color:#888;font-weight:400">For internal use only</span>
+</div>
+</div>
+
+</body>
+</html>

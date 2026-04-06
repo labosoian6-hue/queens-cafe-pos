@@ -531,6 +531,12 @@ def order_slip(order_id):
                            tax_rate=database.get_setting("tax_rate", "16"))
 
 
+@app.route("/training")
+@login_required
+def training_manual():
+    return render_template("training_manual.html")
+
+
 @app.route("/receipt/<int:order_id>")
 @login_required
 def receipt(order_id):

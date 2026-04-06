@@ -136,6 +136,9 @@
       <span class="icon">🔧</span> Settings
     </a>
     {% endif %}
+    <a href="/training" target="_blank" class="{{ 'active' if request.path == '/training' else '' }}">
+      <span class="icon">📖</span> Training Manual
+    </a>
   </nav>
   <div class="sidebar-footer">
     <strong>{{ user.full_name }}</strong>
