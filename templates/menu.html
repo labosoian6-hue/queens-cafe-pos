@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="flex-between">
+  <div>
+    <div class="page-title">🍽️ Menu & Prices</div>
+    <div class="page-sub">Add, edit and manage all menu items and categories</div>
+  </div>
+  <div class="flex">
+    <!-- CSV Import -->
+    <form method="POST" action="/menu/import" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
+      <input type="file" name="csv_file" accept=".csv" style="background:#0f172a;border:1px solid #334155;color:#94a3b8;padding:6px 10px;border-radius:8px;font-size:12px">
+      <button class="btn btn-ghost btn-sm" type="submit">📥 Import CSV</button>
+    </form>
+    <a href="/static/sample_menu.csv" class="btn btn-ghost btn-sm" download>⬇️ Sample CSV</a>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-top:8px">
+
+  <!-- LEFT: Add Item Form -->
+  <div>
+    <div class="card">
+      <div class="card-title">➕ Add New Menu Item</div>
+      <form method="POST" action="/menu/add">
+        <div class="form-group">
+          <label>Item Name *</label>
+          <input class="form-control" name="name" placeholder="e.g. Ugali & Beef" required>
+        </div>
+        <div class="form-group">
+          <label>Category *</label>
+          <select class="form-control" name="category_id" required>
+            <option value="">-- Select Category --</option>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}">{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Price ({{ currency }}) *</label>
+          <input class="form-control" name="price" type="number" step="0.01" min="0" placeholder="e.g. 350" required>
+        </div>
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <textarea class="form-control" name="description" placeholder="Brief description of the item..."></textarea>
+        </div>
+        <button class="btn btn-success" type="submit">✓ Add Item</button>
+      </form>
+    </div>
+
+    <!-- Add Category -->
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">📂 Manage Categories</div>
+      <form method="POST" action="/menu/add-category" style="display:flex;gap:8px;margin-bottom:16px">
+        <input class="form-control" name="name" placeholder="New category name..." style="flex:1" required>
+        <button class="btn btn-primary" type="submit">Add</button>
+      </form>
+      <table class="tbl">
+        <thead><tr><th>Category</th><th>Items</th><th></th></tr></thead>
+        <tbody>
+        {% for cat in categories %}
+        <tr>
+          <td>{{ cat.name }}</td>
+          <td><span class="pill">{{ items|selectattr('category_id', 'equalto', cat.id)|list|length }} items</span></td>
+          <td>
+            <form method="POST" action="/menu/delete-category/{{ cat.id }}" onsubmit="return confirm('Delete category AND all its items?')">
+              <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RIGHT: Items list -->
+  <div class="card">
+    <div class="flex-between" style="margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:0">📋 All Items ({{ items|length }})</div>
+      <input id="search" class="form-control" placeholder="🔍 Search..." style="width:180px;padding:6px 10px;font-size:12px">
+    </div>
+
+    {% for cat in categories %}
+      {% set cat_items = items|selectattr('category_id', 'equalto', cat.id)|list %}
+      {% if cat_items %}
+      <div class="section-head">{{ cat.name }}</div>
+      <table class="tbl" style="margin-bottom:8px">
+        <thead><tr><th>Item</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for item in cat_items %}
+        <tr class="item-row" data-name="{{ item.name.lower() }}">
+          <td>
+            <div style="font-weight:600;color:#f1f5f9">{{ item.name }}</div>
+            {% if item.description %}<div style="font-size:11px;color:#64748b">{{ item.description }}</div>{% endif %}
+          </td>
+          <td style="font-weight:700;color:#fbbf24">{{ currency }} {{ "{:,.0f}".format(item.price) }}</td>
+          <td>
+            <span class="badge {{ 'badge-green' if item.is_available else 'badge-red' }}">
+              {{ 'Available' if item.is_available else 'Unavailable' }}
+            </span>
+          </td>
+          <td>
+            <div class="flex">
+              <!-- Edit button opens modal -->
+              <button class="btn btn-ghost btn-sm" onclick="openEdit({{ item.id }}, '{{ item.name|replace("'","\\'")|replace('"','\\"') }}', {{ item.category_id }}, {{ item.price }}, '{{ item.description|replace("'","\\'")|replace('"','\\"') }}')">✏️</button>
+              <form method="POST" action="/menu/toggle/{{ item.id }}">
+                <button class="btn btn-warn btn-sm" type="submit" title="Toggle availability">{{ '👁️' if item.is_available else '🚫' }}</button>
+              </form>
+              <form method="POST" action="/menu/delete/{{ item.id }}" onsubmit="return confirm('Delete {{ item.name }}?')">
+                <button class="btn btn-danger btn-sm" type="submit">🗑️</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center">
+  <div style="background:#1e293b;border-radius:16px;padding:32px;width:440px;border:1px solid #334155">
+    <h3 style="color:#f1f5f9;margin-bottom:20px">✏️ Edit Menu Item</h3>
+    <form method="POST" id="editForm">
+      <div class="form-group">
+        <label>Item Name</label>
+        <input class="form-control" name="name" id="edit_name" required>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select class="form-control" name="category_id" id="edit_cat">
+          {% for cat in categories %}
+          <option value="{{ cat.id }}">{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Price ({{ currency }})</label>
+        <input class="form-control" name="price" id="edit_price" type="number" step="0.01" required>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea class="form-control" name="description" id="edit_desc"></textarea>
+      </div>
+      <div class="flex" style="margin-top:8px">
+        <button class="btn btn-success" type="submit">Save Changes</button>
+        <button class="btn btn-ghost" type="button" onclick="closeEdit()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEdit(id, name, cat, price, desc) {
+  document.getElementById('editForm').action = '/menu/edit/' + id;
+  document.getElementById('edit_name').value = name;
+  document.getElementById('edit_cat').value = cat;
+  document.getElementById('edit_price').value = price;
+  document.getElementById('edit_desc').value = desc;
+  document.getElementById('editModal').style.display = 'flex';
+}
+function closeEdit() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+// Search filter
+document.getElementById('search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.item-row').forEach(row => {
+    row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}

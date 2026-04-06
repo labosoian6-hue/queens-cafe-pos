@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ cafe_name }} — Login</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .card{background:#1e293b;border-radius:16px;padding:40px 44px;width:380px;border:1px solid #334155}
+  h1{font-size:22px;font-weight:700;color:#7c83fd;text-align:center;margin-bottom:4px}
+  .sub{text-align:center;color:#64748b;font-size:13px;margin-bottom:28px}
+  label{display:block;font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:5px}
+  input{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px 14px;border-radius:8px;font-size:14px;outline:none;margin-bottom:16px}
+  input:focus{border-color:#7c83fd}
+  button{width:100%;background:#7c83fd;color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px}
+  button:hover{background:#6366f1}
+  .error{background:#7f1d1d;color:#f87171;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;border:1px solid #991b1b}
+  .hint{text-align:center;color:#475569;font-size:11px;margin-top:16px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>☕ {{ cafe_name }}</h1>
+  <p class="sub">Web Admin Dashboard</p>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="POST">
+    <label>Username</label>
+    <input type="text" name="username" autofocus autocomplete="off">
+    <label>Password</label>
+    <input type="password" name="password">
+    <button type="submit">Log In →</button>
+  </form>
+  <p class="hint">Default: admin / admin123</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">🪑 Table Management</div>
+<div class="page-sub">Manage restaurant and hotel tables</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">➕ Add Table</div>
+    <form method="POST" action="/tables/add">
+      <div class="form-group">
+        <label>Table Number / Name *</label>
+        <input class="form-control" name="table_number" placeholder="e.g. T7, VIP-3, Terrace-1" required>
+      </div>
+      <div class="form-group">
+        <label>Seating Capacity *</label>
+        <input class="form-control" name="capacity" type="number" min="1" value="4" required>
+      </div>
+      <button class="btn btn-success" type="submit">✓ Add Table</button>
+    </form>
+
+    <div style="margin-top:16px">
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px">QUICK ADD:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        {% for t in [('T7',4),('T8',4),('T9',6),('VIP-3',8),('Terrace',6),('Rooftop',10)] %}
+        <form method="POST" action="/tables/add">
+          <input type="hidden" name="table_number" value="{{ t[0] }}">
+          <input type="hidden" name="capacity" value="{{ t[1] }}">
+          <button class="btn btn-ghost btn-sm" type="submit">+ {{ t[0] }}</button>
+        </form>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🗺️ Tables ({{ tables|length }})</div>
+    <table class="tbl">
+      <thead><tr><th>Table</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for t in tables %}
+      <tr>
+        <td style="font-weight:700">{{ t.table_number }}</td>
+        <td>{{ t.capacity }} seats</td>
+        <td>
+          <span class="badge {{ 'badge-green' if t.status=='free' else 'badge-yellow' if t.status=='occupied' else 'badge-red' }}">
+            {{ t.status.upper() }}
+          </span>
+        </td>
+        <td>
+          <div class="flex">
+            <form method="POST" action="/tables/status/{{ t.id }}">
+              <input type="hidden" name="status" value="{{ 'free' if t.status != 'free' else 'occupied' }}">
+              <button class="btn btn-warn btn-sm" type="submit">{{ 'Set Free' if t.status != 'free' else 'Set Occupied' }}</button>
+            </form>
+            <form method="POST" action="/tables/delete/{{ t.id }}" onsubmit="return confirm('Delete {{ t.table_number }}?')">
+              <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">📊 Dashboard</div>
+<div class="page-sub">Today's overview — {{ selected_date if selected_date is defined else '' }}</div>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat">
+    <div class="icon">🧾</div>
+    <div class="val">{{ summary.summary.orders or 0 }}</div>
+    <div class="lbl">Orders Today</div>
+  </div>
+  <div class="stat">
+    <div class="icon">💰</div>
+    <div class="val">{{ currency }} {{ "{:,.0f}".format(summary.summary.revenue or 0) }}</div>
+    <div class="lbl">Revenue Today</div>
+  </div>
+  <div class="stat">
+    <div class="icon">📐</div>
+    <div class="val">{{ currency }} {{ "{:,.0f}".format(summary.summary.avg_order or 0) }}</div>
+    <div class="lbl">Avg Order Value</div>
+  </div>
+  <div class="stat">
+    <div class="icon">🍽️</div>
+    <div class="val">{{ top_items|length }}</div>
+    <div class="lbl">Items Selling Today</div>
+  </div>
+</div>
+
+<div class="grid-2">
+
+  <!-- Payment breakdown -->
+  <div class="card">
+    <div class="card-title">💳 Payment Methods Today</div>
+    {% if summary.by_method %}
+      <table class="tbl">
+        <thead><tr><th>Method</th><th>Orders</th><th>Revenue</th></tr></thead>
+        <tbody>
+        {% for m in summary.by_method %}
+        <tr>
+          <td>
+            {% if m.payment_method == 'cash' %}💵{% elif m.payment_method == 'mpesa' %}📱{% else %}💳{% endif %}
+            {{ m.payment_method.upper() }}
+          </td>
+          <td>{{ m.cnt }}</td>
+          <td>{{ currency }} {{ "{:,.2f}".format(m.total) }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="color:#64748b;font-size:13px">No sales recorded today yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Top items -->
+  <div class="card">
+    <div class="card-title">🔥 Top Selling Items Today</div>
+    {% if top_items %}
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Item</th><th>Qty</th><th>Revenue</th></tr></thead>
+        <tbody>
+        {% for i, item in top_items|enumerate %}
+        <tr>
+          <td style="color:#64748b">{{ i+1 }}</td>
+          <td>{{ item.item_name }}</td>
+          <td><span class="badge badge-blue">{{ item.qty }}</span></td>
+          <td>{{ currency }} {{ "{:,.0f}".format(item.revenue) }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="color:#64748b;font-size:13px">No sales yet today.</p>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Recent orders -->
+<div class="card" style="margin-top:20px">
+  <div class="flex-between" style="margin-bottom:14px">
+    <div class="card-title" style="margin-bottom:0">🧾 Recent Orders</div>
+    <a href="/orders" class="btn btn-ghost btn-sm">View All</a>
+  </div>
+  {% if recent_orders %}
+  <table class="tbl">
+    <thead><tr><th>Receipt</th><th>Time</th><th>Table</th><th>Cashier</th><th>Total</th><th>Payment</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for o in recent_orders %}
+    <tr>
+      <td style="font-family:monospace;font-size:12px">{{ o.receipt_number }}</td>
+      <td>{{ o.created_at[11:16] }}</td>
+      <td>{{ o.table_number or 'Takeaway' }}</td>
+      <td>{{ o.cashier_name }}</td>
+      <td>{{ currency }} {{ "{:,.2f}".format(o.total) }}</td>
+      <td>
+        {% if o.payment_method == 'cash' %}💵{% elif o.payment_method == 'mpesa' %}📱{% elif o.payment_method == 'card' %}💳{% endif %}
+        {{ o.payment_method.upper() if o.payment_method else '-' }}
+      </td>
+      <td>
+        <span class="badge {{ 'badge-green' if o.status == 'paid' else 'badge-red' if o.status == 'voided' else 'badge-yellow' }}">
+          {{ o.status.upper() }}
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p style="color:#64748b;font-size:13px">No orders today yet.</p>
+  {% endif %}
+</div>
+
+<script>
+// Auto-refresh dashboard every 60 seconds
+setTimeout(() => location.reload(), 60000);
+</script>
+{% endblock %}
