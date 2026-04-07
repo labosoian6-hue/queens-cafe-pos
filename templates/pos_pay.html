@@ -71,12 +71,12 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-heig
       </div>
       <div class="fields" id="mpesa-fields">
         <div class="fg">
-          <label>Customer Phone Number</label>
-          <input class="fc" type="tel" id="mpesaPhone" placeholder="e.g. 0712 345 678">
+          <label>Amount Paid via M-Pesa ({{ currency }})</label>
+          <input class="fc" type="number" id="mpesaAmt" value="{{ "%.2f"|format(order.total) }}" min="0" step="50" oninput="calcMpesaChange(this.value)">
         </div>
-        <div class="fg">
-          <label>M-Pesa Transaction Code (optional)</label>
-          <input class="fc" type="text" id="mpesaRef" placeholder="e.g. QE3F4R5G6H" style="text-transform:uppercase">
+        <div class="change-box" id="mpesaChangeBox" style="display:none">
+          <span class="lbl">Change to give customer:</span>
+          <span class="amt" id="mpesaChangeAmt">{{ currency }} 0.00</span>
         </div>
       </div>
       <div class="fields" id="card-fields">
@@ -111,11 +111,17 @@ function calcChange(v){
   document.getElementById('changeAmt').textContent=CUR+' '+ch.toFixed(2);
   document.getElementById('atInput').value=parseFloat(v||0)||TOTAL;
 }
+function calcMpesaChange(v){
+  const ch=Math.max(0,parseFloat(v||0)-TOTAL);
+  const box=document.getElementById('mpesaChangeBox');
+  box.style.display=ch>0?'flex':'none';
+  document.getElementById('mpesaChangeAmt').textContent=CUR+' '+ch.toFixed(2);
+  document.getElementById('atInput').value=parseFloat(v||0)||TOTAL;
+}
+
 document.getElementById('payForm').addEventListener('submit',function(){
   if(method==='mpesa'){
-    const ph=document.getElementById('mpesaPhone').value.trim();
-    const rf=document.getElementById('mpesaRef').value.trim();
-    document.getElementById('prInput').value=[ph,rf].filter(Boolean).join(' | ');
+    document.getElementById('atInput').value=document.getElementById('mpesaAmt').value;
   } else if(method==='card'){
     document.getElementById('prInput').value=document.getElementById('cardRef').value.trim();
   } else if(method==='cash'){
