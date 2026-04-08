@@ -62,7 +62,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-heig
       <div class="fields" id="cash-fields">
         <div class="fg">
           <label>Amount Tendered ({{ currency }})</label>
-          <input class="fc" type="number" id="cashAmt" value="{{ "%.2f"|format(order.total) }}" min="{{ "%.2f"|format(order.total) }}" step="50" oninput="calcChange(this.value)">
+          <input class="fc" type="number" id="cashAmt" value="{{ "%.2f"|format(order.total) }}" min="0" step="any" oninput="calcChange(this.value)">
         </div>
         <div class="change-box">
           <span class="lbl">Change to give customer:</span>
@@ -72,7 +72,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-heig
       <div class="fields" id="mpesa-fields">
         <div class="fg">
           <label>Amount Paid via M-Pesa ({{ currency }})</label>
-          <input class="fc" type="number" id="mpesaAmt" value="{{ "%.2f"|format(order.total) }}" min="0" step="50" oninput="calcMpesaChange(this.value)">
+          <input class="fc" type="number" id="mpesaAmt" value="{{ "%.2f"|format(order.total) }}" min="0" step="any" oninput="calcMpesaChange(this.value)">
         </div>
         <div class="change-box" id="mpesaChangeBox" style="display:none">
           <span class="lbl">Change to give customer:</span>
