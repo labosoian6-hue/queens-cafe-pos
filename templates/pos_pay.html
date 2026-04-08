@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment — {{ order.receipt_number }}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#1e293b;border-radius:16px;border:1px solid #334155;width:100%;max-width:460px;overflow:hidden}
+.card-hdr{background:#0f172a;padding:18px 22px;border-bottom:1px solid #334155}
+.card-hdr .title{font-size:17px;font-weight:700;color:#f1f5f9}
+.card-hdr .sub{font-size:12px;color:#64748b;margin-top:3px}
+.card-body{padding:22px}
+.total-box{text-align:center;padding:18px 0 22px;border-bottom:1px solid #334155;margin-bottom:18px}
+.total-lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.total-amt{font-size:38px;font-weight:800;color:#4ade80}
+.total-rcpt{font-size:11px;color:#475569;margin-top:5px;font-family:monospace}
+.method-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.m-btn{padding:14px 6px;border-radius:10px;border:2px solid #334155;background:#0f172a;color:#94a3b8;cursor:pointer;text-align:center;font-size:12px;font-weight:600;transition:all .15s}
+.m-btn .ico{font-size:22px;display:block;margin-bottom:5px}
+.m-btn:hover{border-color:#7c83fd;color:#e2e8f0}
+.m-btn.active{border-color:#7c83fd;background:#1e3a5f;color:#60a5fa}
+.fields{display:none}
+.fields.show{display:block}
+.fg{margin-bottom:13px}
+.fg label{display:block;font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:4px}
+.fc{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px 12px;border-radius:8px;font-size:14px;outline:none}
+.fc:focus{border-color:#7c83fd}
+.change-box{background:#14532d;border:1px solid #166534;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.change-box .lbl{font-size:12px;color:#4ade80}
+.change-box .amt{font-size:20px;font-weight:700;color:#4ade80}
+.actions{display:flex;gap:9px;margin-top:18px}
+.btn-back{background:#334155;color:#94a3b8;border:none;border-radius:9px;padding:12px 18px;font-size:14px;font-weight:600;cursor:pointer}
+.btn-back:hover{background:#475569}
+.btn-confirm{flex:1;background:#16a34a;color:#fff;border:none;border-radius:9px;padding:12px;font-size:15px;font-weight:700;cursor:pointer}
+.btn-confirm:hover{background:#15803d}
+.btn-confirm:disabled{background:#334155;color:#64748b;cursor:not-allowed}
+</style>
+</head>
+<body>
+<form method="POST" action="/pos/order/{{ order.id }}/pay" id="payForm">
+  <input type="hidden" name="payment_method" id="pmInput" value="">
+  <input type="hidden" name="payment_reference" id="prInput" value="">
+  <input type="hidden" name="amount_tendered" id="atInput" value="{{ order.total }}">
+  <div class="card">
+    <div class="card-hdr">
+      <div class="title">💳 Process Payment</div>
+      <div class="sub">{{ order.table_number or 'Takeaway' }} &nbsp;·&nbsp; {{ user.full_name }}</div>
+    </div>
+    <div class="card-body">
+      <div class="total-box">
+        <div class="total-lbl">Amount Due</div>
+        <div class="total-amt">{{ currency }} {{ "{:,.2f}".format(order.total) }}</div>
+        <div class="total-rcpt">{{ order.receipt_number }}</div>
+      </div>
+      <div class="method-grid">
+        <div class="m-btn" onclick="selectMethod('cash',event)"><span class="ico">💵</span>Cash</div>
+        <div class="m-btn" onclick="selectMethod('mpesa',event)"><span class="ico">📱</span>M-Pesa</div>
+        <div class="m-btn" onclick="selectMethod('card',event)"><span class="ico">💳</span>Card</div>
+      </div>
+      <div class="fields" id="cash-fields">
+        <div class="fg">
+          <label>Amount Tendered ({{ currency }})</label>
+          <input class="fc" type="number" id="cashAmt" value="{{ "%.2f"|format(order.total) }}" min="{{ "%.2f"|format(order.total) }}" step="50" oninput="calcChange(this.value)">
+        </div>
+        <div class="change-box">
+          <span class="lbl">Change to give customer:</span>
+          <span class="amt" id="changeAmt">{{ currency }} 0.00</span>
+        </div>
+      </div>
+      <div class="fields" id="mpesa-fields">
+        <div class="fg">
+          <label>Amount Paid via M-Pesa ({{ currency }})</label>
+          <input class="fc" type="number" id="mpesaAmt" value="{{ "%.2f"|format(order.total) }}" min="0" step="50" oninput="calcMpesaChange(this.value)">
+        </div>
+        <div class="change-box" id="mpesaChangeBox" style="display:none">
+          <span class="lbl">Change to give customer:</span>
+          <span class="amt" id="mpesaChangeAmt">{{ currency }} 0.00</span>
+        </div>
+      </div>
+      <div class="fields" id="card-fields">
+        <div class="fg">
+          <label>Card Approval / Reference Code</label>
+          <input class="fc" type="text" id="cardRef" placeholder="Approval code">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn-back" onclick="history.back()">← Back</button>
+        <button type="button" class="btn-back" onclick="window.location.href='/pos/order/{{ order.id }}/split'" style="background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8">⚡ Split Bill</button>
+        <button type="submit" class="btn-confirm" id="confirmBtn" disabled>Confirm Payment ✓</button>
+      </div>
+    </div>
+  </div>
+</form>
+<script>
+const TOTAL={{ order.total }}, CUR='{{ currency }}';
+let method=null;
+function selectMethod(m,e){
+  method=m;
+  document.querySelectorAll('.m-btn').forEach(b=>b.classList.remove('active'));
+  e.currentTarget.classList.add('active');
+  document.querySelectorAll('.fields').forEach(f=>f.classList.remove('show'));
+  document.getElementById(m+'-fields').classList.add('show');
+  document.getElementById('pmInput').value=m;
+  document.getElementById('confirmBtn').disabled=false;
+  if(m==='cash')calcChange(document.getElementById('cashAmt').value);
+}
+function calcChange(v){
+  const ch=Math.max(0,parseFloat(v||0)-TOTAL);
+  document.getElementById('changeAmt').textContent=CUR+' '+ch.toFixed(2);
+  document.getElementById('atInput').value=parseFloat(v||0)||TOTAL;
+}
+function calcMpesaChange(v){
+  const ch=Math.max(0,parseFloat(v||0)-TOTAL);
+  const box=document.getElementById('mpesaChangeBox');
+  box.style.display=ch>0?'flex':'none';
+  document.getElementById('mpesaChangeAmt').textContent=CUR+' '+ch.toFixed(2);
+  document.getElementById('atInput').value=parseFloat(v||0)||TOTAL;
+}
+
+document.getElementById('payForm').addEventListener('submit',function(){
+  if(method==='mpesa'){
+    document.getElementById('atInput').value=document.getElementById('mpesaAmt').value;
+  } else if(method==='card'){
+    document.getElementById('prInput').value=document.getElementById('cardRef').value.trim();
+  } else if(method==='cash'){
+    document.getElementById('atInput').value=document.getElementById('cashAmt').value;
+  }
+});
+</script>
+</body>
+</html>

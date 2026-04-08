@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.rcpt-wrap{max-width:400px;margin:0 auto}
+.rcpt{background:#fff;color:#111;border-radius:8px;padding:22px 18px;font-family:'Courier New',monospace;font-size:12px;line-height:1.7}
+.rcpt .r-hdr{text-align:center;margin-bottom:8px}
+.rcpt .r-name{font-size:15px;font-weight:800;letter-spacing:.5px}
+.rcpt .r-addr{font-size:11px;color:#555;margin-top:2px}
+.rcpt hr{border:none;border-top:1px dashed #aaa;margin:8px 0}
+.rcpt .r-row{display:flex;justify-content:space-between}
+.rcpt .r-item{margin:3px 0}
+.rcpt .r-item .r-row.sub{color:#666;font-size:11px}
+.rcpt .r-total{font-size:14px;font-weight:800;border-top:2px solid #111;padding-top:5px;margin-top:5px}
+.rcpt .r-ctr{text-align:center;color:#555}
+@media print{
+  .sidebar,.page-title,.page-sub,.print-actions{display:none!important}
+  .main{margin-left:0!important;padding:10px!important}
+  .rcpt-wrap{max-width:100%}
+  .rcpt{border-radius:0;box-shadow:none}
+}
+</style>
+
+<div class="flex-between print-actions" style="margin-bottom:20px">
+  <div>
+    <div class="page-title">🧾 Receipt</div>
+    <div class="page-sub">{{ order.receipt_number }} — {{ order.status.upper() }}</div>
+  </div>
+  <div class="flex">
+    <button onclick="window.print()" class="btn btn-ghost">🖨️ Print Receipt</button>
+    {% if order.status == 'paid' %}
+    <script>window.onload=function(){window.print();}</script>
+    {% endif %}
+    {% if order.status == 'open' %}
+    <a href="/pos/order/{{ order.id }}" class="btn btn-warn">← Back to Order</a>
+    {% else %}
+    <a href="/pos" class="btn btn-primary">🖥️ New Order</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="rcpt-wrap">
+  <div class="rcpt">
+    <div class="r-hdr">
+      {% if receipt_header %}<div style="font-size:11px;color:#555;margin-bottom:3px">{{ receipt_header }}</div>{% endif %}
+      <div class="r-name">{{ cafe_name }}</div>
+      {% if address %}<div class="r-addr">{{ address }}</div>{% endif %}
+      {% if phone %}<div class="r-addr">Tel: {{ phone }}</div>{% endif %}
+    </div>
+    <hr>
+    <div class="r-row"><span>Receipt #:</span><span>{{ order.receipt_number }}</span></div>
+    <div class="r-row"><span>Date:</span><span>{{ (order.paid_at or order.created_at)[:10] }}</span></div>
+    <div class="r-row"><span>Time:</span><span>{{ (order.paid_at or order.created_at)[11:16] }}</span></div>
+    <div class="r-row"><span>Cashier:</span><span>{{ order.cashier_name }}</span></div>
+    <div class="r-row"><span>Table:</span><span>{{ order.table_number or 'Takeaway' }}</span></div>
+    <hr>
+    <div class="r-row" style="font-weight:700"><span>ITEM</span><span style="display:flex;gap:24px"><span>QTY</span><span style="min-width:70px;text-align:right">TOTAL</span></span></div>
+    <hr>
+    {% for item in order_items %}
+    <div class="r-item">
+      <div>{{ item.item_name }}</div>
+      {% if item.notes %}<div style="font-size:10px;color:#888;font-style:italic">  ↳ {{ item.notes }}</div>{% endif %}
+      <div class="r-row sub"><span>@ {{ currency }} {{ "{:,.2f}".format(item.unit_price) }}</span><span style="display:flex;gap:30px"><span>{{ item.quantity }}</span><span style="min-width:70px;text-align:right">{{ "{:,.2f}".format(item.line_total) }}</span></span></div>
+    </div>
+    {% endfor %}
+    <hr>
+    <div class="r-row"><span>SUBTOTAL</span><span>{{ currency }} {{ "{:,.2f}".format(order.subtotal) }}</span></div>
+    {% if order.discount_amount > 0 %}
+    <div class="r-row"><span>DISCOUNT ({% if order.discount_type == 'percent' %}{{ order.discount_value|int }}%{% else %}{{ currency }} {{ "{:,.2f}".format(order.discount_value) }}{% endif %})</span><span>-{{ currency }} {{ "{:,.2f}".format(order.discount_amount) }}</span></div>
+    <div class="r-row" style="color:#777"><span>NET TAXABLE</span><span>{{ currency }} {{ "{:,.2f}".format(order.subtotal - order.discount_amount) }}</span></div>
+    {% endif %}
+    <div class="r-row r-total"><span>TOTAL</span><span>{{ currency }} {{ "{:,.2f}".format(order.total) }}</span></div>
+    <hr>
+    <div class="r-row"><span>Payment:</span><span>{{ (order.payment_method or '-').upper() }}</span></div>
+    {% if order.payment_reference %}<div class="r-row"><span>Ref:</span><span>{{ order.payment_reference }}</span></div>{% endif %}
+    {% if order.payment_method == 'cash' and order.amount_tendered %}
+    <div class="r-row"><span>Cash:</span><span>{{ currency }} {{ "{:,.2f}".format(order.amount_tendered) }}</span></div>
+    <div class="r-row"><span>Change:</span><span>{{ currency }} {{ "{:,.2f}".format(order.change_given) }}</span></div>
+    {% endif %}
+    <hr>
+    <div class="r-ctr">{{ receipt_footer }}</div>
+  </div>
+</div>
+{% endblock %}

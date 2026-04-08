@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Order Slip — {{ order.receipt_number }}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Courier New',monospace;font-size:12px;background:#fff;color:#000;padding:10px;width:80mm}
+.center{text-align:center}
+.bold{font-weight:700}
+.name{font-size:15px;font-weight:900;letter-spacing:.5px}
+hr{border:none;border-top:1px dashed #000;margin:6px 0}
+.row{display:flex;justify-content:space-between;margin:2px 0}
+.item-row{margin:4px 0}
+.item-title{font-size:12px;font-weight:700}
+.sub{color:#444;font-size:11px}
+.total-row{display:flex;justify-content:space-between;font-size:14px;font-weight:900;padding:5px 0;border-top:2px solid #000;margin-top:4px}
+.pending{text-align:center;font-size:12px;font-style:italic;margin-top:8px;border:1px dashed #000;padding:6px}
+@media print{
+  body{padding:0}
+  @page{margin:5mm;size:80mm auto}
+}
+</style>
+</head>
+<body onload="window.print()">
+
+<div class="center">
+  <div class="name">{{ cafe_name }}</div>
+  {% if address %}<div style="font-size:10px">{{ address }}</div>{% endif %}
+  {% if phone %}<div style="font-size:10px">Tel: {{ phone }}</div>{% endif %}
+</div>
+<hr>
+<div class="center bold" style="font-size:11px;letter-spacing:1px">ORDER SLIP</div>
+<hr>
+<div class="row"><span class="bold">Table:</span><span class="bold">{{ order.table_number or 'Takeaway' }}</span></div>
+<div class="row"><span>Order #:</span><span>{{ order.receipt_number }}</span></div>
+<div class="row"><span>Server:</span><span>{{ order.cashier_name }}</span></div>
+<div class="row"><span>Time:</span><span>{{ order.created_at[11:16] }}</span></div>
+<hr>
+<div class="row bold"><span>ITEM</span><span style="display:flex;gap:16px"><span>QTY</span><span style="min-width:56px;text-align:right">TOTAL</span></span></div>
+<hr>
+{% for item in order_items %}
+<div class="item-row">
+  <div class="item-title">{{ item.item_name }}</div>
+  <div class="row sub">
+    <span>@ {{ currency }} {{ "{:,.0f}".format(item.unit_price) }}</span>
+    <span style="display:flex;gap:22px">
+      <span>{{ item.quantity }}</span>
+      <span style="min-width:56px;text-align:right">{{ "{:,.0f}".format(item.line_total) }}</span>
+    </span>
+  </div>
+  {% if item.notes %}<div style="font-size:10px;font-style:italic;color:#555"> ↳ {{ item.notes }}</div>{% endif %}
+</div>
+{% endfor %}
+<hr>
+<div class="row"><span>Subtotal</span><span>{{ currency }} {{ "{:,.0f}".format(order.subtotal) }}</span></div>
+{% if order.discount_amount > 0 %}
+<div class="row"><span>Discount</span><span>-{{ currency }} {{ "{:,.0f}".format(order.discount_amount) }}</span></div>
+{% endif %}
+<div class="row"><span>VAT {{ tax_rate }}%</span><span>{{ currency }} {{ "{:,.0f}".format(order.tax_amount) }}</span></div>
+<div class="total-row"><span>TOTAL</span><span>{{ currency }} {{ "{:,.0f}".format(order.total) }}</span></div>
+
+<div class="pending">
+  Please keep this slip.<br>
+  Pay when done dining. Thank you!
+</div>
+<br>
+
+</body>
+</html>

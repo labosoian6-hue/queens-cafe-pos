@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>POS — {{ order.table_number or 'Takeaway' }}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* Header */
+.pos-hdr{background:#1e293b;border-bottom:1px solid #334155;height:52px;display:flex;align-items:center;padding:0 14px;gap:12px;flex-shrink:0}
+.pos-hdr .logo{font-weight:800;color:#7c83fd;font-size:14px;white-space:nowrap}
+.info-chip{background:#0f172a;border-radius:16px;padding:3px 10px;font-size:11px;color:#94a3b8;white-space:nowrap}
+.info-chip strong{color:#e2e8f0}
+.hdr-clock{font-size:13px;color:#64748b;margin-left:auto;white-space:nowrap}
+.exit-btn{background:#334155;color:#94a3b8;border-radius:7px;padding:5px 12px;font-size:12px;text-decoration:none;font-weight:600;white-space:nowrap}
+.exit-btn:hover{background:#475569;color:#e2e8f0}
+.transfer-btn{background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap}
+.transfer-btn:hover{background:#1d4ed8;color:#fff}
+
+/* Body */
+.pos-body{flex:1;display:flex;overflow:hidden}
+
+/* Menu panel */
+.menu-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.menu-search{padding:8px 10px;background:#1e293b;border-bottom:1px solid #334155;flex-shrink:0}
+.menu-search input{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:7px 11px;border-radius:7px;font-size:13px;outline:none}
+.menu-search input:focus{border-color:#7c83fd}
+.cat-bar{display:flex;gap:5px;padding:8px 10px;overflow-x:auto;background:#1e293b;border-bottom:1px solid #334155;flex-shrink:0;scrollbar-width:none}
+.cat-bar::-webkit-scrollbar{display:none}
+.cat-btn{flex-shrink:0;padding:6px 14px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:#334155;color:#94a3b8;transition:all .15s}
+.cat-btn.active,.cat-btn:hover{background:#7c83fd;color:#fff}
+.item-grid{flex:1;overflow-y:auto;padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-content:start}
+.item-card{background:#1e293b;border:2px solid #334155;border-radius:9px;padding:11px 8px;cursor:pointer;text-align:center;transition:all .15s;user-select:none;position:relative}
+.item-card:hover{border-color:#7c83fd;background:#1e3a5f}
+.item-card.in-order{border-color:#16a34a;background:#14532d22}
+.item-card.unavail{opacity:0.35;cursor:not-allowed}
+.item-name{font-size:11px;font-weight:600;color:#e2e8f0;margin-bottom:5px;line-height:1.3}
+.item-price{font-size:13px;font-weight:700;color:#7c83fd}
+.item-qty-badge{position:absolute;top:5px;right:5px;background:#16a34a;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;display:none}
+
+/* Ticket panel */
+.ticket-panel{width:360px;flex-shrink:0;display:flex;flex-direction:column;border-left:1px solid #334155;background:#1e293b}
+.ticket-hdr{padding:10px 14px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.ticket-hdr h3{font-size:12px;font-weight:700;color:#94a3b8;letter-spacing:.5px;text-transform:uppercase}
+.item-count{background:#7c83fd;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700}
+.ticket-items{flex:1;overflow-y:auto;padding:6px 12px}
+.ticket-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#475569;font-size:13px}
+.ticket-empty .ico{font-size:36px;margin-bottom:8px;opacity:0.3}
+.t-item{display:flex;align-items:center;gap:7px;padding:7px 0;border-bottom:1px solid #334155}
+.t-item:last-child{border-bottom:none}
+.t-info{flex:1;min-width:0}
+.t-info .nm{font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-info .up{font-size:10px;color:#64748b}
+.qty-ctrl{display:flex;align-items:center;gap:3px}
+.qb{background:#334155;border:none;color:#e2e8f0;width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.qb:hover{background:#475569}
+.qb.minus:hover{background:#7f1d1d}
+.qdsp{width:24px;text-align:center;font-size:12px;font-weight:700;color:#f1f5f9}
+.lt{font-size:11px;font-weight:700;color:#fbbf24;min-width:64px;text-align:right}
+.rm-btn{background:none;border:none;color:#475569;cursor:pointer;font-size:16px;padding:1px;line-height:1}
+.rm-btn:hover{color:#f87171}
+
+/* Footer */
+.ticket-ftr{padding:10px 14px;border-top:1px solid #334155;background:#1e293b;flex-shrink:0}
+.tot-row{display:flex;justify-content:space-between;font-size:12px;color:#94a3b8;padding:2px 0}
+.tot-row.grand{font-size:15px;font-weight:800;color:#f1f5f9;padding:7px 0 3px;border-top:1px solid #334155;margin-top:3px}
+.disc-row{display:flex;gap:6px;margin:7px 0}
+.disc-row select,.disc-row input{background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;outline:none}
+.disc-row select{width:72px}
+.disc-row input{flex:1}
+.disc-row input:focus,.disc-row select:focus{border-color:#7c83fd}
+.act-row{display:flex;gap:7px;margin-top:9px}
+.btn-void{background:#7f1d1d;color:#f87171;border:none;border-radius:8px;padding:10px 13px;font-size:12px;font-weight:700;cursor:pointer}
+.btn-void:hover{background:#991b1b}
+.btn-pay{flex:1;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:800;cursor:pointer}
+.btn-pay:hover{background:#15803d}
+.btn-pay:disabled{background:#334155;color:#64748b;cursor:not-allowed}
+.btn-split{background:#1e3a5f;color:#60a5fa;border:none;border-radius:8px;padding:10px 11px;font-size:12px;font-weight:700;cursor:pointer}
+.btn-split:hover{background:#1d4ed8;color:#fff}
+
+/* Modal overlay */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal-box{background:#1e293b;border-radius:14px;border:1px solid #334155;padding:24px;width:360px;max-width:90vw;max-height:80vh;overflow-y:auto}
+.modal-title{font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:16px}
+.modal-actions{display:flex;gap:8px;margin-top:18px}
+.mbtn{flex:1;padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer}
+.mbtn-primary{background:#7c83fd;color:#fff}
+.mbtn-cancel{background:#334155;color:#94a3b8}
+.mbtn-cancel:hover{background:#475569}
+.mbtn-primary:hover{opacity:.85}
+.mod-option{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #334155;cursor:pointer}
+.mod-option:last-child{border-bottom:none}
+.mod-option input[type=checkbox]{width:16px;height:16px;accent-color:#7c83fd}
+.mod-name{font-size:13px;color:#e2e8f0;flex:1}
+.mod-price{font-size:12px;color:#7c83fd;font-weight:600}
+.pin-input{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px 14px;border-radius:8px;font-size:20px;outline:none;text-align:center;letter-spacing:6px;margin-bottom:8px}
+.pin-input:focus{border-color:#7c83fd}
+.pin-err{color:#f87171;font-size:12px;text-align:center;display:none}
+.transfer-select{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;margin-bottom:8px}
+.transfer-select:focus{border-color:#7c83fd}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
+@media(max-width:900px){.item-grid{grid-template-columns:repeat(2,1fr)}.ticket-panel{width:300px}}
+</style>
+</head>
+<body>
+
+<div class="pos-hdr">
+  <div class="logo">☕ {{ cafe_name }}</div>
+  <div class="info-chip">🪑 <strong>{{ order.table_number or 'Takeaway' }}</strong></div>
+  <div class="info-chip" style="font-family:monospace;font-size:10px">{{ order.receipt_number }}</div>
+  <div class="info-chip">👤 {{ user.full_name }}</div>
+  {% if order.table_id %}
+  <button class="transfer-btn" onclick="openTransferModal()">⇄ Transfer Table</button>
+  {% endif %}
+  <div class="hdr-clock" id="clock">--:--</div>
+  <a href="javascript:history.back()" class="exit-btn" style="background:#1e3a5f;color:#60a5fa">← Back</a>
+  <button onclick="toggleFullscreen()" class="exit-btn" id="fsBtn">⛶ Full</button>
+  <a href="/pos" class="exit-btn">✕ Exit</a>
+</div>
+
+<div class="pos-body">
+
+  <div class="menu-panel">
+    <div class="menu-search">
+      <input type="text" id="menuSearch" placeholder="🔍 Search items..." oninput="filterItems(this.value)">
+    </div>
+    <div class="cat-bar">
+      <button class="cat-btn active" onclick="filterCat(0,this)">⊞ All</button>
+      {% for cat in categories %}
+      <button class="cat-btn" onclick="filterCat({{ cat.id }},this)">{{ cat.name }}</button>
+      {% endfor %}
+    </div>
+    <div class="item-grid" id="itemGrid">
+      {% for item in items %}
+      <div class="item-card"
+           data-cat="{{ item.category_id }}"
+           data-name="{{ item.name|lower }}"
+           data-id="{{ item.id }}"
+           onclick="handleItemClick({{ item.id }})">
+        <div class="item-qty-badge" id="badge-{{ item.id }}">0</div>
+        <div class="item-name">{{ item.name }}</div>
+        <div class="item-price">{{ currency }} {{ "{:,.0f}".format(item.price) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="ticket-panel">
+    <div class="ticket-hdr">
+      <h3>Order Ticket</h3>
+      <span class="item-count" id="itemCount">0</span>
+    </div>
+    <div class="ticket-items" id="ticketItems">
+      <div class="ticket-empty"><div class="ico">🛒</div>Tap items to add</div>
+    </div>
+    <div class="ticket-ftr">
+      <div style="font-size:11px;color:#64748b;margin-bottom:5px">Discount:</div>
+      <div class="disc-row">
+        <select id="discType" onchange="applyDiscount()">
+          <option value="percent">%</option>
+          <option value="flat">{{ currency }}</option>
+        </select>
+        <input type="number" id="discVal" value="0" min="0" step="0.01" placeholder="0" oninput="applyDiscountDebounced()">
+      </div>
+      <div class="tot-row"><span>Subtotal</span><span id="subtotal">{{ currency }} 0</span></div>
+      <div class="tot-row" style="color:#f87171"><span>Discount</span><span id="discAmt">- {{ currency }} 0</span></div>
+      <div class="tot-row"><span>VAT ({{ tax_rate }}%)</span><span id="taxAmt">{{ currency }} 0</span></div>
+      <div class="tot-row grand"><span>TOTAL</span><span id="grandTotal">{{ currency }} 0</span></div>
+      <div class="act-row" style="flex-wrap:wrap;gap:7px">
+        {% if user.role == 'admin' %}
+        <form method="POST" action="/pos/order/{{ order.id }}/void" onsubmit="return confirm('Void this entire order?')">
+          <button class="btn-void" type="submit">🗑</button>
+        </form>
+        {% endif %}
+        <button class="btn-split" id="splitBtn" disabled onclick="goToSplit()" title="Split Bill">⚡ Split</button>
+        <button class="btn-kitchen" id="kitchenBtn" disabled onclick="sendToKitchen()" style="background:#b45309;color:#fef3c7;border:none;border-radius:8px;padding:10px 11px;font-size:12px;font-weight:700;cursor:pointer" title="Print kitchen ticket + customer slip">🍳 Send</button>
+        <button class="btn-pay" id="payBtn" disabled onclick="goToPay()">PAY →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Transfer Table Modal -->
+<div class="modal-overlay" id="transferModal">
+  <div class="modal-box">
+    <div class="modal-title">⇄ Transfer Table</div>
+    <p style="font-size:12px;color:#94a3b8;margin-bottom:12px">Select a free table to move this order to:</p>
+    <select class="transfer-select" id="transferTableSelect">
+      <option value="">Loading free tables...</option>
+    </select>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-cancel" onclick="closeTransferModal()">Cancel</button>
+      <button class="mbtn mbtn-primary" onclick="confirmTransfer()">Transfer →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modifier Selection Modal -->
+<div class="modal-overlay" id="modifierModal">
+  <div class="modal-box">
+    <div class="modal-title" id="modModalTitle">Choose Options</div>
+    <div id="modOptions"></div>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-cancel" onclick="closeModModal()">Cancel</button>
+      <button class="mbtn mbtn-primary" onclick="confirmModifiers()">Add to Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manager PIN Modal -->
+<div class="modal-overlay" id="pinModal">
+  <div class="modal-box">
+    <div class="modal-title">🔐 Manager PIN Required</div>
+    <p style="font-size:12px;color:#94a3b8;margin-bottom:12px">Discount exceeds the allowed threshold. Please enter the Manager PIN to continue.</p>
+    <input type="password" class="pin-input" id="pinInput" maxlength="4" placeholder="••••" inputmode="numeric">
+    <div class="pin-err" id="pinErr">Incorrect PIN. Please try again.</div>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-cancel" onclick="cancelPinModal()">Cancel</button>
+      <button class="mbtn mbtn-primary" onclick="submitPin()">Verify PIN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ORDER_ID = {{ order.id }};
+const CURRENCY = '{{ currency }}';
+const DISCOUNT_THRESHOLD = {{ discount_threshold|default(10) }};
+const USER_ROLE = '{{ user.role }}';
+let discTimer = null;
+let pendingDiscType = null;
+let pendingDiscVal = null;
+let pendingModItemId = null;
+
+function tick(){const n=new Date();document.getElementById('clock').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')}
+setInterval(tick,1000);tick();
+
+function fmt(n){return CURRENCY+' '+(n||0).toLocaleString('en-KE',{minimumFractionDigits:0,maximumFractionDigits:2})}
+
+function filterCat(id,btn){
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('menuSearch').value='';
+  document.querySelectorAll('.item-card').forEach(c=>{c.style.display=(id===0||+c.dataset.cat===id)?'':'none'});
+}
+function filterItems(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('.cat-btn').forEach((b,i)=>{if(i===0)b.classList.add('active');else b.classList.remove('active')});
+  document.querySelectorAll('.item-card').forEach(c=>{c.style.display=c.dataset.name.includes(q)?'':'none'});
+}
+
+function handleItemClick(itemId){
+  // Check if this item has modifiers
+  fetch('/api/item/'+itemId+'/modifiers')
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.modifiers && data.modifiers.length > 0){
+        openModModal(itemId, data.modifiers);
+      } else {
+        addItem(itemId);
+      }
+    })
+    .catch(()=>addItem(itemId));
+}
+
+function addItem(itemId){
+  fetch('/api/order/'+ORDER_ID+'/add-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:itemId})})
+    .then(r=>r.json()).then(renderOrder);
+}
+
+function updateQty(oiId,qty){
+  fetch('/api/order/'+ORDER_ID+'/update-item/'+oiId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({qty:qty})})
+    .then(r=>r.json()).then(renderOrder);
+}
+
+function applyDiscountDebounced(){clearTimeout(discTimer);discTimer=setTimeout(applyDiscount,600)}
+
+function applyDiscount(){
+  const type=document.getElementById('discType').value;
+  const value=parseFloat(document.getElementById('discVal').value)||0;
+  // Check threshold for non-admin users
+  if(USER_ROLE !== 'admin' && type === 'percent' && value > DISCOUNT_THRESHOLD){
+    pendingDiscType = type;
+    pendingDiscVal = value;
+    openPinModal();
+    return;
+  }
+  doApplyDiscount(type, value);
+}
+
+function doApplyDiscount(type, value){
+  fetch('/api/order/'+ORDER_ID+'/set-discount',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,value})})
+    .then(r=>r.json()).then(renderOrder);
+}
+
+function renderOrder(data){
+  const order=data.order,items=data.items;
+  const totalQty=items.reduce((s,i)=>s+i.quantity,0);
+  document.getElementById('itemCount').textContent=totalQty;
+
+  // Reset badges
+  document.querySelectorAll('.item-qty-badge').forEach(b=>{b.style.display='none';b.textContent='0'});
+  document.querySelectorAll('.item-card').forEach(c=>c.classList.remove('in-order'));
+  items.forEach(oi=>{
+    const b=document.getElementById('badge-'+oi.menu_item_id);
+    const c=document.querySelector('[data-id="'+oi.menu_item_id+'"]');
+    if(b){b.textContent=oi.quantity;b.style.display=''}
+    if(c)c.classList.add('in-order');
+  });
+
+  const container=document.getElementById('ticketItems');
+  if(items.length===0){
+    container.innerHTML='<div class="ticket-empty"><div class="ico">🛒</div>Tap items to add</div>';
+  } else {
+    container.innerHTML=items.map(oi=>`
+      <div class="t-item">
+        <div class="t-info">
+          <div class="nm">${oi.item_name}</div>
+          <div class="up">${fmt(oi.unit_price)} ea${oi.notes?` · <em style="color:#fbbf24;font-size:10px">${oi.notes}</em>`:''}</div>
+        </div>
+        <div class="qty-ctrl">
+          <button class="qb minus" onclick="updateQty(${oi.id},${oi.quantity-1})">−</button>
+          <span class="qdsp">${oi.quantity}</span>
+          <button class="qb" onclick="updateQty(${oi.id},${oi.quantity+1})">+</button>
+        </div>
+        <div class="lt">${fmt(oi.line_total)}</div>
+        <button class="rm-btn" title="Add note" onclick="promptNote(${oi.id},'${(oi.notes||'').replace(/'/g,"&apos;")}')" style="color:#64748b;font-size:13px">📝</button>
+        <button class="rm-btn" onclick="updateQty(${oi.id},0)">×</button>
+      </div>`).join('');
+  }
+
+  document.getElementById('subtotal').textContent=fmt(order.subtotal);
+  document.getElementById('discAmt').textContent='- '+fmt(order.discount_amount);
+  document.getElementById('taxAmt').textContent=fmt(order.tax_amount);
+  document.getElementById('grandTotal').textContent=fmt(order.total);
+  document.getElementById('discType').value=order.discount_type||'percent';
+  document.getElementById('discVal').value=order.discount_value||0;
+
+  const payBtn=document.getElementById('payBtn');
+  const splitBtn=document.getElementById('splitBtn');
+  const kitchenBtn=document.getElementById('kitchenBtn');
+  payBtn.disabled=items.length===0;
+  splitBtn.disabled=items.length===0;
+  kitchenBtn.disabled=items.length===0;
+  payBtn.textContent=items.length===0?'PAY →':'PAY '+fmt(order.total)+' →';
+}
+
+function goToPay(){window.location.href='/pos/order/'+ORDER_ID+'/pay'}
+function goToSplit(){window.location.href='/pos/order/'+ORDER_ID+'/split'}
+
+function sendToKitchen(){
+  // Print kitchen ticket
+  const kt = window.open('/pos/order/'+ORDER_ID+'/kitchen-ticket','_blank','width=400,height=600');
+  // Print customer order slip after a short delay
+  setTimeout(function(){
+    window.open('/pos/order/'+ORDER_ID+'/order-slip','_blank','width=400,height=600');
+  }, 800);
+}
+
+function promptNote(oiId, currentNote){
+  const note=prompt('Special instructions for this item:',currentNote||'');
+  if(note===null)return;
+  fetch('/api/order/'+ORDER_ID+'/item-note/'+oiId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({note:note})})
+    .then(r=>r.json()).then(renderOrder);
+}
+
+// ── Transfer Table Modal ──────────────────────────────────────────────────────
+function openTransferModal(){
+  fetch('/api/tables/free')
+    .then(r=>r.json())
+    .then(data=>{
+      const sel = document.getElementById('transferTableSelect');
+      sel.innerHTML = '';
+      if(!data.tables || data.tables.length===0){
+        sel.innerHTML = '<option value="">No free tables available</option>';
+      } else {
+        sel.innerHTML = '<option value="">-- Select a table --</option>' +
+          data.tables.map(t=>`<option value="${t.id}">${t.table_number} (cap: ${t.capacity})</option>`).join('');
+      }
+    });
+  document.getElementById('transferModal').classList.add('show');
+}
+function closeTransferModal(){document.getElementById('transferModal').classList.remove('show')}
+function confirmTransfer(){
+  const tableId = document.getElementById('transferTableSelect').value;
+  if(!tableId){alert('Please select a table.');return;}
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/pos/order/'+ORDER_ID+'/transfer-table';
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'new_table_id';
+  input.value = tableId;
+  form.appendChild(input);
+  document.body.appendChild(form);
+  form.submit();
+}
+
+// ── Modifier Modal ────────────────────────────────────────────────────────────
+let currentModifiers = [];
+function openModModal(itemId, mods){
+  pendingModItemId = itemId;
+  currentModifiers = mods;
+  const itemName = document.querySelector('[data-id="'+itemId+'"] .item-name').textContent;
+  document.getElementById('modModalTitle').textContent = 'Options: '+itemName;
+  document.getElementById('modOptions').innerHTML = mods.map(m=>`
+    <label class="mod-option">
+      <input type="checkbox" value="${m.id}" data-delta="${m.price_delta}">
+      <span class="mod-name">${m.name}</span>
+      <span class="mod-price">${m.price_delta>0?'+'+CURRENCY+' '+m.price_delta.toFixed(0):(m.price_delta<0?CURRENCY+' '+m.price_delta.toFixed(0):'Free')}</span>
+    </label>`).join('');
+  document.getElementById('modifierModal').classList.add('show');
+}
+function closeModModal(){
+  document.getElementById('modifierModal').classList.remove('show');
+  pendingModItemId = null;
+}
+function confirmModifiers(){
+  const checks = document.querySelectorAll('#modOptions input[type=checkbox]:checked');
+  const modIds = Array.from(checks).map(c=>parseInt(c.value));
+  document.getElementById('modifierModal').classList.remove('show');
+  if(modIds.length === 0){
+    addItem(pendingModItemId);
+  } else {
+    fetch('/api/order/'+ORDER_ID+'/add-item-with-modifiers',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({item_id:pendingModItemId, modifier_ids:modIds})
+    }).then(r=>r.json()).then(renderOrder);
+  }
+  pendingModItemId = null;
+}
+
+// ── Manager PIN Modal ─────────────────────────────────────────────────────────
+function openPinModal(){
+  document.getElementById('pinInput').value='';
+  document.getElementById('pinErr').style.display='none';
+  document.getElementById('pinModal').classList.add('show');
+  setTimeout(()=>document.getElementById('pinInput').focus(),100);
+}
+function cancelPinModal(){
+  document.getElementById('pinModal').classList.remove('show');
+  // Reset discount to threshold max
+  document.getElementById('discVal').value = DISCOUNT_THRESHOLD;
+  doApplyDiscount('percent', DISCOUNT_THRESHOLD);
+  pendingDiscType = null;
+  pendingDiscVal = null;
+}
+function submitPin(){
+  const pin = document.getElementById('pinInput').value;
+  fetch('/api/verify-manager-pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:pin})})
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.ok){
+        document.getElementById('pinModal').classList.remove('show');
+        doApplyDiscount(pendingDiscType, pendingDiscVal);
+        pendingDiscType = null;
+        pendingDiscVal = null;
+      } else {
+        document.getElementById('pinErr').style.display='block';
+        document.getElementById('pinInput').value='';
+        document.getElementById('pinInput').focus();
+      }
+    });
+}
+// Allow Enter key in PIN field
+document.getElementById('pinInput').addEventListener('keydown',function(e){if(e.key==='Enter')submitPin();});
+
+fetch('/api/order/'+ORDER_ID).then(r=>r.json()).then(renderOrder);
+
+function toggleFullscreen(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen();
+    document.getElementById('fsBtn').textContent='✕ Exit Full';
+  } else {
+    document.exitFullscreen();
+    document.getElementById('fsBtn').textContent='⛶ Full';
+  }
+}
+document.addEventListener('fullscreenchange',function(){
+  const btn=document.getElementById('fsBtn');
+  if(btn) btn.textContent=document.fullscreenElement?'✕ Exit Full':'⛶ Full';
+});
+
+// Session auto-lock after 15 minutes of inactivity
+(function(){
+  const TIMEOUT = 15 * 60 * 1000;
+  let timer;
+  function resetTimer(){
+    clearTimeout(timer);
+    timer = setTimeout(function(){
+      window.location.href = '/?msg=Session+locked+due+to+inactivity';
+    }, TIMEOUT);
+  }
+  ['mousemove','keydown','click','touchstart'].forEach(function(ev){
+    document.addEventListener(ev, resetTimer, true);
+  });
+  resetTimer();
+})();
+</script>
+</body>
+</html>
