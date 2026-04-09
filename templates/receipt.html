@@ -27,7 +27,7 @@
   </div>
   <div class="flex">
     <button onclick="window.print()" class="btn btn-ghost">🖨️ Print Receipt</button>
-    {% if order.status == 'paid' %}
+    {% if order.status == 'paid' or auto_print %}
     <script>window.onload=function(){window.print();}</script>
     {% endif %}
     {% if order.status == 'open' %}
@@ -79,7 +79,7 @@
     <hr>
     <div class="r-ctr">{{ receipt_footer }}</div>
     {% if till_number %}
-    <div class="r-ctr" style="margin-top:6px;font-size:11px;color:#555">TILL NO: {{ till_number }}</div>
+    <div class="r-ctr" style="margin-top:8px;font-size:14px;font-weight:800;color:#111;letter-spacing:1px">TILL NO: {{ till_number }}</div>
     {% endif %}
   </div>
 </div>

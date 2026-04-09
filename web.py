@@ -584,6 +584,7 @@ def receipt(order_id):
                            phone=database.get_setting("phone", ""),
                            tax_rate=database.get_setting("tax_rate", "16"),
                            till_number=database.get_setting("till_number", ""),
+                           auto_print=request.args.get("print") == "1",
                            user=session["user"])
 
 

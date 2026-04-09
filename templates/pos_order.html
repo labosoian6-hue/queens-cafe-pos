@@ -185,6 +185,19 @@ body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;height:1
   </div>
 </div>
 
+<!-- Print Choice Modal -->
+<div class="modal-overlay" id="printChoiceModal">
+  <div class="modal-box" style="max-width:320px">
+    <div class="modal-title">🖨️ Print Options</div>
+    <p style="font-size:13px;color:#94a3b8;margin-bottom:16px">What would you like to print?</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="mbtn mbtn-primary" onclick="doPrint('both')" style="padding:14px;font-size:14px">🍳 Kitchen + Customer Receipt</button>
+      <button class="mbtn" onclick="doPrint('customer')" style="padding:14px;font-size:14px;background:#0f766e;color:#fff;border:none;border-radius:8px;cursor:pointer">🧾 Customer Receipt Only</button>
+      <button class="mbtn mbtn-cancel" onclick="closePrintModal()" style="padding:12px">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Transfer Table Modal -->
 <div class="modal-overlay" id="transferModal">
   <div class="modal-box">
@@ -353,12 +366,20 @@ function goToPay(){window.location.href='/pos/order/'+ORDER_ID+'/pay'}
 function goToSplit(){window.location.href='/pos/order/'+ORDER_ID+'/split'}
 
 function sendToKitchen(){
-  // Print kitchen ticket
-  const kt = window.open('/pos/order/'+ORDER_ID+'/kitchen-ticket','_blank','width=400,height=600');
-  // Print customer order slip after a short delay
-  setTimeout(function(){
-    window.open('/pos/order/'+ORDER_ID+'/order-slip','_blank','width=400,height=600');
-  }, 800);
+  document.getElementById('printChoiceModal').style.display='flex';
+}
+function closePrintModal(){
+  document.getElementById('printChoiceModal').style.display='none';
+}
+function doPrint(choice){
+  closePrintModal();
+  if(choice==='both'){
+    // Kitchen ticket already includes customer receipt on 2nd page
+    window.open('/pos/order/'+ORDER_ID+'/kitchen-ticket','_blank','width=400,height=700');
+  } else {
+    // Customer receipt only — ?print=1 triggers auto-print
+    window.open('/receipt/'+ORDER_ID+'?print=1','_blank','width=400,height=700');
+  }
 }
 
 function promptNote(oiId, currentNote){
