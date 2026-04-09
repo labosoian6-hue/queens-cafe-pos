@@ -204,10 +204,7 @@ def add_category():
 @app.route("/menu/delete-category/<int:cat_id>", methods=["POST"])
 @admin_required
 def delete_category(cat_id):
-    items = database.get_items_by_category(cat_id)
-    for i in items:
-        database.delete_menu_item(i["id"])
-    database.delete_category(cat_id)
+    database.delete_category_with_items(cat_id)
     flash("Category and its items deleted.", "success")
     return redirect(url_for("menu"))
 

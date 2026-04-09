@@ -15,7 +15,7 @@ def _hash(password: str) -> str:
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     # Low-RAM optimisations for 2 GB machines
@@ -375,6 +375,21 @@ def delete_category(cat_id):
     conn.execute("DELETE FROM categories WHERE id=?", (cat_id,))
     conn.commit()
     conn.close()
+
+
+def delete_category_with_items(cat_id):
+    """Delete a category and all its menu items in one connection/transaction."""
+    conn = get_connection()
+    try:
+        items = conn.execute("SELECT id FROM menu_items WHERE category_id=?", (cat_id,)).fetchall()
+        for row in items:
+            conn.execute("DELETE FROM order_item_modifiers WHERE modifier_id IN (SELECT id FROM modifiers WHERE menu_item_id=?)", (row["id"],))
+            conn.execute("DELETE FROM modifiers WHERE menu_item_id=?", (row["id"],))
+            conn.execute("DELETE FROM menu_items WHERE id=?", (row["id"],))
+        conn.execute("DELETE FROM categories WHERE id=?", (cat_id,))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 # ── Tables DAO ─────────────────────────────────────────────────────────────────
