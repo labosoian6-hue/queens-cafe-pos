@@ -14,6 +14,15 @@ hr{border:none;border-top:2px dashed #000;margin:6px 0}
 .item-name{font-size:15px;font-weight:700;margin:6px 0 2px}
 .item-qty{font-size:20px;font-weight:900;color:#000}
 .note{font-size:12px;font-style:italic;margin-left:10px;border-left:2px solid #000;padding-left:6px}
+.page-break{page-break-before:always}
+/* Customer receipt styles */
+.rcpt{font-size:12px;line-height:1.6}
+.rcpt .r-hdr{text-align:center;margin-bottom:6px}
+.rcpt .r-name{font-size:15px;font-weight:800;letter-spacing:.5px}
+.rcpt .r-addr{font-size:11px;color:#555;margin-top:2px}
+.rcpt .r-row{display:flex;justify-content:space-between}
+.rcpt .r-total{font-size:14px;font-weight:800}
+.rcpt .r-ctr{text-align:center;font-size:11px}
 @media print{
   body{padding:0}
   @page{margin:5mm;size:80mm auto}
@@ -22,6 +31,7 @@ hr{border:none;border-top:2px dashed #000;margin:6px 0}
 </head>
 <body onload="window.print()">
 
+<!-- ═══ KITCHEN TICKET ═══ -->
 <div class="center bold" style="font-size:13px;letter-spacing:2px">*** KITCHEN ORDER ***</div>
 <hr>
 <div class="row">
@@ -55,6 +65,53 @@ hr{border:none;border-top:2px dashed #000;margin:6px 0}
 <hr>
 <div class="center bold" style="font-size:13px">{{ order_items|length }} item(s)</div>
 <br>
+
+<!-- ═══ CUSTOMER RECEIPT ═══ -->
+<div class="page-break rcpt">
+  <div class="r-hdr">
+    {% if receipt_header %}<div style="font-size:11px;color:#555;margin-bottom:3px">{{ receipt_header }}</div>{% endif %}
+    <div class="r-name">{{ cafe_name }}</div>
+    {% if address %}<div class="r-addr">{{ address }}</div>{% endif %}
+    {% if phone %}<div class="r-addr">Tel: {{ phone }}</div>{% endif %}
+  </div>
+  <hr>
+  <div class="r-row"><span>Receipt #:</span><span>{{ order.receipt_number }}</span></div>
+  <div class="r-row"><span>Date:</span><span>{{ (order.paid_at or order.created_at)[:10] }}</span></div>
+  <div class="r-row"><span>Time:</span><span>{{ (order.paid_at or order.created_at)[11:16] }}</span></div>
+  <div class="r-row"><span>Cashier:</span><span>{{ order.cashier_name }}</span></div>
+  <div class="r-row"><span>Table:</span><span>{{ order.table_number or 'Takeaway' }}</span></div>
+  <hr>
+  <div class="r-row bold"><span>ITEM</span><span style="display:flex;gap:16px"><span>QTY</span><span style="min-width:60px;text-align:right">TOTAL</span></span></div>
+  <hr>
+  {% for item in order_items %}
+  <div style="margin:2px 0">
+    <div>{{ item.item_name }}</div>
+    {% if item.notes %}<div style="font-size:10px;color:#888;font-style:italic">  ↳ {{ item.notes }}</div>{% endif %}
+    <div class="r-row" style="color:#555;font-size:11px">
+      <span>@ {{ currency }} {{ "{:,.0f}".format(item.unit_price) }}</span>
+      <span style="display:flex;gap:22px"><span>{{ item.quantity }}</span><span style="min-width:60px;text-align:right">{{ "{:,.0f}".format(item.line_total) }}</span></span>
+    </div>
+  </div>
+  {% endfor %}
+  <hr>
+  <div class="r-row"><span>SUBTOTAL</span><span>{{ currency }} {{ "{:,.2f}".format(order.subtotal) }}</span></div>
+  {% if order.discount_amount > 0 %}
+  <div class="r-row"><span>DISCOUNT</span><span>-{{ currency }} {{ "{:,.2f}".format(order.discount_amount) }}</span></div>
+  {% endif %}
+  <div class="r-row r-total"><span>TOTAL</span><span>{{ currency }} {{ "{:,.2f}".format(order.total) }}</span></div>
+  <hr>
+  <div class="r-row"><span>Payment:</span><span>{{ (order.payment_method or '-').upper() }}</span></div>
+  {% if order.payment_reference %}<div class="r-row"><span>Ref:</span><span>{{ order.payment_reference }}</span></div>{% endif %}
+  {% if order.payment_method == 'cash' and order.amount_tendered %}
+  <div class="r-row"><span>Cash:</span><span>{{ currency }} {{ "{:,.2f}".format(order.amount_tendered) }}</span></div>
+  <div class="r-row"><span>Change:</span><span>{{ currency }} {{ "{:,.2f}".format(order.change_given) }}</span></div>
+  {% endif %}
+  <hr>
+  <div class="r-ctr">{{ receipt_footer }}</div>
+  {% if till_number %}
+  <div class="r-ctr" style="margin-top:4px">TILL NO: {{ till_number }}</div>
+  {% endif %}
+</div>
 
 </body>
 </html>

@@ -27,7 +27,7 @@ def _encode(text):
     return text.encode('ascii', errors='replace')
 
 
-def build_customer_receipt(order, items, cafe, currency, footer, tax_rate, address="", phone="", receipt_header=""):
+def build_customer_receipt(order, items, cafe, currency, footer, tax_rate, address="", phone="", receipt_header="", till_number=""):
     """Build ESC/POS byte sequence for a customer receipt."""
     buf = bytearray()
     buf += INIT
@@ -108,6 +108,8 @@ def build_customer_receipt(order, items, cafe, currency, footer, tax_rate, addre
     buf += ALIGN_CENTER
     if footer:
         buf += _encode(footer[:PAPER_WIDTH].center(PAPER_WIDTH)) + LINE_FEED
+    if till_number:
+        buf += _encode(f"TILL NO: {till_number}".center(PAPER_WIDTH)) + LINE_FEED
     buf += rule("=")
 
     # Feed and cut

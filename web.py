@@ -535,7 +535,13 @@ def kitchen_ticket(order_id):
     return render_template("kitchen_ticket.html",
                            order=data["order"],
                            order_items=data["items"],
-                           cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"))
+                           cafe_name=database.get_setting("cafe_name", "QUEENS CAFE"),
+                           currency=database.get_setting("currency_symbol", "KSh"),
+                           receipt_footer=database.get_setting("receipt_footer", "Thank you for dining with us!"),
+                           receipt_header=database.get_setting("receipt_header", ""),
+                           address=database.get_setting("address", ""),
+                           phone=database.get_setting("phone", ""),
+                           till_number=database.get_setting("till_number", ""))
 
 
 @app.route("/pos/order/<int:order_id>/order-slip")
@@ -577,6 +583,7 @@ def receipt(order_id):
                            address=database.get_setting("address", ""),
                            phone=database.get_setting("phone", ""),
                            tax_rate=database.get_setting("tax_rate", "16"),
+                           till_number=database.get_setting("till_number", ""),
                            user=session["user"])
 
 
@@ -888,7 +895,7 @@ def settings():
     if request.method == "POST":
         for key in ["cafe_name", "tax_rate", "currency_symbol", "receipt_footer",
                     "address", "phone", "receipt_header",
-                    "manager_pin", "discount_threshold"]:
+                    "manager_pin", "discount_threshold", "till_number"]:
             database.set_setting(key, request.form.get(key, "").strip())
         flash("Settings saved successfully.", "success")
         return redirect(url_for("settings"))
@@ -902,13 +909,20 @@ def settings():
                            receipt_header=database.get_setting("receipt_header"),
                            manager_pin=database.get_setting("manager_pin",""),
                            discount_threshold=database.get_setting("discount_threshold","10"),
+                           till_number=database.get_setting("till_number",""),
                            user=session["user"])
 
 
 if __name__ == "__main__":
+    import socket
+    try:
+        local_ip = socket.gethostbyname(socket.gethostname())
+    except:
+        local_ip = "YOUR-PC-IP"
     print("\n" + "="*50)
     print("  QUEENS CAFE — Web Dashboard")
-    print("  Open your browser: http://localhost:5000")
+    print(f"  Local:   http://localhost:5000")
+    print(f"  Network: http://{local_ip}:5000")
     print("  Login: admin / admin123")
     print("="*50 + "\n")
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)

@@ -191,7 +191,7 @@ def initialize_db():
 
     # Extended settings defaults
     for k, v in [("address", ""), ("phone", ""), ("receipt_header", ""),
-                 ("manager_pin", ""), ("discount_threshold", "10")]:
+                 ("manager_pin", ""), ("discount_threshold", "10"), ("till_number", "6931308")]:
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?,?)", (k, v))
 
     conn.commit()
