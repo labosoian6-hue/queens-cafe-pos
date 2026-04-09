@@ -348,6 +348,9 @@ def update_menu_item(item_id, category_id, name, price, description):
 
 def delete_menu_item(item_id):
     conn = get_connection()
+    # Delete child records first to avoid FK constraint failures
+    conn.execute("DELETE FROM order_item_modifiers WHERE modifier_id IN (SELECT id FROM modifiers WHERE menu_item_id=?)", (item_id,))
+    conn.execute("DELETE FROM modifiers WHERE menu_item_id=?", (item_id,))
     conn.execute("DELETE FROM menu_items WHERE id=?", (item_id,))
     conn.commit()
     conn.close()
